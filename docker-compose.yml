@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ufms
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL:                  postgresql://postgres:${POSTGRES_PASSWORD:-secret}@db:5432/ufms
+      SECRET_KEY:                    ${SECRET_KEY:-changeme-set-a-real-secret-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES:   ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS:     ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      ALLOWED_ORIGINS:               ${ALLOWED_ORIGINS:-["http://localhost:8000"]}
+      # First-run admin credentials
+      ADMIN_EMAIL:                   ${ADMIN_EMAIL:-admin@ufms.local}
+      ADMIN_PASSWORD:                ${ADMIN_PASSWORD:-Admin1234!}
+      ADMIN_NAME:                    ${ADMIN_NAME:-System Administrator}
+    env_file:
+      - path: .env
+        required: false
+
+volumes:
+  pgdata:

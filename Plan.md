@@ -341,7 +341,7 @@ Establish the project structure, database, and core API.
 - Define all SQLAlchemy models and generate initial Alembic migration
 - Implement user registration, login, JWT issuance, and role middleware
 - Build ticket CRUD endpoints: create, read, list (own tickets), add message, change status
-- Implement unique ticket number generator (`TKT-YYYY-NNNNN` format, auto-incremented per year)
+- Implement unique ticket number generator (`TKT-YYYY-MM-NNNNN` format, auto-incremented per month, year)
 - Write unit tests for auth and ticket services
 - Docker Compose setup for local development (app + PostgreSQL)
 

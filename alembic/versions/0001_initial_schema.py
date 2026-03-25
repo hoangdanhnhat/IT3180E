@@ -44,7 +44,7 @@ def upgrade() -> None:
         sa.Column("full_name", sa.String(255), nullable=False),
         sa.Column(
             "role",
-            sa.Enum("customer", "agent", "admin", name="userrole"),
+            postgresql.ENUM("customer", "agent", "admin", name="userrole", create_type=False),
             nullable=False,
             server_default="customer",
         ),
@@ -81,20 +81,20 @@ def upgrade() -> None:
         sa.Column("description", sa.Text, nullable=False),
         sa.Column(
             "category",
-            sa.Enum("billing", "delays", "lost_found", "route", "other", name="ticketcategory"),
+            postgresql.ENUM("billing", "delays", "lost_found", "route", "other", name="ticketcategory", create_type=False),
             nullable=False,
         ),
         sa.Column(
             "priority",
-            sa.Enum("low", "normal", "high", "urgent", name="ticketpriority"),
+            postgresql.ENUM("low", "normal", "high", "urgent", name="ticketpriority", create_type=False),
             nullable=False,
             server_default="normal",
         ),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "open", "in_progress", "pending_customer", "resolved", "closed",
-                name="ticketstatus",
+                name="ticketstatus", create_type=False,
             ),
             nullable=False,
             server_default="open",
@@ -215,17 +215,17 @@ def upgrade() -> None:
         ),
         sa.Column(
             "old_status",
-            sa.Enum(
+            postgresql.ENUM(
                 "open", "in_progress", "pending_customer", "resolved", "closed",
-                name="ticketstatus",
+                name="ticketstatus", create_type=False,
             ),
             nullable=True,
         ),
         sa.Column(
             "new_status",
-            sa.Enum(
+            postgresql.ENUM(
                 "open", "in_progress", "pending_customer", "resolved", "closed",
-                name="ticketstatus",
+                name="ticketstatus", create_type=False,
             ),
             nullable=False,
         ),

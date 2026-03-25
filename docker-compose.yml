@@ -29,7 +29,7 @@ services:
       REFRESH_TOKEN_EXPIRE_DAYS:     ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       ALLOWED_ORIGINS:               ${ALLOWED_ORIGINS:-["http://localhost:8000"]}
       # First-run admin credentials
-      ADMIN_EMAIL:                   ${ADMIN_EMAIL:-admin@ufms.local}
+      ADMIN_EMAIL:                   ${ADMIN_EMAIL:-admin@ufms.hehe}
       ADMIN_PASSWORD:                ${ADMIN_PASSWORD:-Admin1234!}
       ADMIN_NAME:                    ${ADMIN_NAME:-System Administrator}
     env_file:

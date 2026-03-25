@@ -89,7 +89,11 @@ loginForm.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      showError(data.detail || "Login failed. Please try again.");
+      const detail = data.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map(e => e.msg || JSON.stringify(e)).join("; ")
+        : (typeof detail === "string" ? detail : "Login failed. Please try again.");
+      showError(msg || "Login failed. Please try again.");
       return;
     }
 

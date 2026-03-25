@@ -7,7 +7,7 @@ Or inside Docker:
     docker compose exec app python -m scripts.seed_admin
 
 Environment variables (override via .env or shell):
-    ADMIN_EMAIL      — defaults to admin@ufms.local
+    ADMIN_EMAIL      — defaults to admin@ufms.hehe
     ADMIN_PASSWORD   — defaults to Admin1234!
     ADMIN_NAME       — defaults to System Administrator
 """
@@ -22,7 +22,7 @@ from app.core.db import SessionLocal
 from app.storage import user_repo
 from app.storage.models import UserRole
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@ufms.local")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@ufms.hehe")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin1234!")
 ADMIN_NAME = os.getenv("ADMIN_NAME", "System Administrator")
 

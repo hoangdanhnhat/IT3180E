@@ -193,12 +193,102 @@
             Make this ticket public after resolution
           </label>
         </div>
+        <div class="field">
+          <label for="ticket-attachments">Attachments <span class="field-hint">(optional — JPEG, PNG, GIF, WEBP, PDF · max 10 MB each)</span></label>
+          <div class="file-drop-zone" id="file-drop-zone">
+            <input type="file" id="ticket-attachments" multiple
+              accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,image/jpeg,image/png,image/gif,image/webp,application/pdf" />
+            <span class="file-drop-label">Click to choose files or drag &amp; drop here</span>
+          </div>
+          <ul id="attachment-preview" class="attachment-preview"></ul>
+        </div>
         <button type="submit" id="submit-ticket-btn" class="btn btn-primary">Submit Ticket</button>
       </form>
     </div>
   </div>
 
   <footer>UFMS &copy; 2026</footer>
+
+  <!-- ============ ADMIN DASHBOARD ============ -->
+  <div id="admin-dashboard-section" class="card card-wide hidden">
+    <div class="logo">UFMS</div>
+    <div class="welcome-header">
+      <div>
+        <p class="subtitle">Admin Dashboard</p>
+        <h2 id="admin-user-name"></h2>
+        <span class="badge badge-red">admin</span>
+      </div>
+      <button id="admin-logout-btn" class="btn btn-outline">Sign out</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="admin-tab active" data-tab="users">Users</button>
+      <button class="admin-tab" data-tab="create-user">+ Create Account</button>
+    </div>
+
+    <!-- ── Users tab ── -->
+    <div id="admin-tab-users" class="tab-panel">
+      <div id="admin-users-error" class="alert alert-error hidden"></div>
+      <p id="admin-users-loading" class="muted-text hidden">Loading users&hellip;</p>
+
+      <!-- Users table -->
+      <div id="admin-users-table-wrap" class="admin-table-wrap">
+        <table class="admin-table" id="admin-users-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Active</th>
+              <th>Tickets</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Per-user tickets panel -->
+      <div id="admin-user-tickets-panel" class="hidden">
+        <button id="admin-back-to-users" class="btn-back">&larr; Back to Users</button>
+        <h4 id="admin-user-tickets-title" class="section-heading"></h4>
+        <p id="admin-user-tickets-loading" class="muted-text hidden">Loading tickets&hellip;</p>
+        <p id="admin-user-tickets-empty" class="empty-msg hidden">This user has no tickets.</p>
+        <ul id="admin-user-tickets-list" class="ticket-list"></ul>
+      </div>
+    </div>
+
+    <!-- ── Create Account tab ── -->
+    <div id="admin-tab-create-user" class="tab-panel hidden">
+      <div id="admin-create-success" class="alert alert-success hidden"></div>
+      <div id="admin-create-error" class="alert alert-error hidden"></div>
+      <form id="admin-create-form" novalidate>
+        <div class="field">
+          <label for="admin-new-name">Full name</label>
+          <input id="admin-new-name" type="text" autocomplete="off" placeholder="Jane Doe" required />
+        </div>
+        <div class="field">
+          <label for="admin-new-email">Email address</label>
+          <input id="admin-new-email" type="email" autocomplete="off" placeholder="user@example.com" required />
+        </div>
+        <div class="field">
+          <label for="admin-new-password">Password <span class="field-hint">(min 8 characters)</span></label>
+          <input id="admin-new-password" type="password" autocomplete="new-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required />
+        </div>
+        <div class="field">
+          <label for="admin-new-role">Role</label>
+          <select id="admin-new-role">
+            <option value="customer">Customer</option>
+            <option value="agent">Agent</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" id="admin-create-btn" class="btn btn-primary">Create Account</button>
+      </form>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

@@ -2,18 +2,20 @@
 
 Endpoints
 ---------
-POST   /tickets                  Customer   — submit a new ticket
-GET    /tickets                  Customer   — list own tickets
-GET    /tickets/public           Public     — browse public resolved tickets
-GET    /tickets/{id}             Customer / Agent — get ticket detail + messages
-POST   /tickets/{id}/messages    Customer / Agent — add reply or internal note
-PATCH  /tickets/{id}/status      Agent      — change ticket status
-PATCH  /tickets/{id}/assign      Agent      — assign ticket to an agent
+POST   /tickets                       Customer   — submit a new ticket
+GET    /tickets                       Customer   — list own tickets
+GET    /tickets/public                Public     — browse public resolved tickets
+GET    /tickets/{id}                  Customer / Agent — get ticket detail + messages
+POST   /tickets/{id}/messages         Customer / Agent — add reply or internal note
+POST   /tickets/{id}/attachments      Customer / Agent — upload file attachments
+PATCH  /tickets/{id}/status           Agent      — change ticket status
+PATCH  /tickets/{id}/assign           Agent      — assign ticket to an agent
 """
 
+import os
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -22,6 +24,7 @@ from app.api.dependencies import (
 )
 from app.api.schemas import (
     AssignUpdate,
+    AttachmentOut,
     MessageCreate,
     MessageOut,
     PublicTicketOut,
@@ -30,11 +33,18 @@ from app.api.schemas import (
     TicketDetail,
     TicketOut,
 )
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.services import ticket_service
-from app.storage import user_repo
+from app.storage import ticket_repo, user_repo
 from app.storage.models import User, UserRole
+
+_ALLOWED_MIME_TYPES = {
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+}
+_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"}
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -145,6 +155,73 @@ def add_message(
         sender_role=current_user.role,
         content=body.content,
         is_internal=body.is_internal,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Customer / Agent — upload attachments
+# ---------------------------------------------------------------------------
+
+@router.post("/{ticket_id}/attachments", response_model=AttachmentOut, status_code=201)
+async def upload_attachment(
+    ticket_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a file attachment (image or PDF, max 10 MB) to a ticket."""
+    ticket = ticket_service.get_ticket_or_404(db, ticket_id)
+
+    is_agent_or_admin = current_user.role in (UserRole.agent, UserRole.admin)
+    if not is_agent_or_admin and ticket.user_id != current_user.id:
+        raise ForbiddenException("You do not have access to this ticket")
+
+    # Validate extension
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only JPEG, PNG, GIF, WEBP, and PDF files are allowed",
+        )
+
+    # Read and validate size
+    contents = await file.read()
+    if len(contents) > settings.MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File exceeds the 10 MB limit",
+        )
+
+    # Validate mime type from content-type header (best-effort)
+    mime = (file.content_type or "").split(";")[0].strip()
+    if mime and mime not in _ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File type not permitted",
+        )
+
+    # Build a safe storage filename: {ticket_id}_{random_uuid}{ext}
+    safe_name = f"{ticket_id}_{uuid.uuid4().hex}{ext}"
+    dest = os.path.join(settings.UPLOAD_DIR, safe_name)
+    with open(dest, "wb") as f:
+        f.write(contents)
+
+    attachment = ticket_repo.create_attachment(
+        db,
+        ticket_id=ticket_id,
+        filename=file.filename or safe_name,
+        storage_path=safe_name,
+        mime_type=mime or "application/octet-stream",
+        file_size=len(contents),
+    )
+
+    return AttachmentOut(
+        id=attachment.id,
+        ticket_id=attachment.ticket_id,
+        filename=attachment.filename,
+        mime_type=attachment.mime_type,
+        file_size=attachment.file_size,
+        url=f"/uploads/{safe_name}",
     )
 
 

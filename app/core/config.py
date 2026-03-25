@@ -28,5 +28,9 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # File uploads
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_BYTES: int = 10 * 1024 * 1024  # 10 MB
+
 
 settings = Settings()

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.storage.models import TicketCategory, TicketPriority, TicketStatus
+from app.storage.models import TicketCategory, TicketPriority, TicketStatus, UserRole
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +124,60 @@ class StatusUpdate(BaseModel):
 
 class AssignUpdate(BaseModel):
     agent_id: uuid.UUID
+
+
+# ---------------------------------------------------------------------------
+# Attachments
+# ---------------------------------------------------------------------------
+
+class AttachmentOut(BaseModel):
+    id: uuid.UUID
+    ticket_id: uuid.UUID
+    filename: str
+    mime_type: str
+    file_size: int
+    url: str
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Admin
+# ---------------------------------------------------------------------------
+
+class AdminCreateUser(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    full_name: str = Field(..., min_length=1, max_length=255)
+    role: UserRole = UserRole.customer
+
+
+class RoleUpdate(BaseModel):
+    role: UserRole
+
+
+class TicketBrief(BaseModel):
+    id: uuid.UUID
+    ticket_number: str
+    subject: str
+    status: TicketStatus
+    priority: TicketPriority
+    category: TicketCategory
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserAdminOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    created_at: datetime
+    ticket_count: int = 0
+
+    model_config = {"from_attributes": True}
 
 
 # ---------------------------------------------------------------------------

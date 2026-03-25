@@ -35,3 +35,14 @@ def create_user(
 
 def admin_exists(db: Session) -> bool:
     return db.query(User).filter(User.role == UserRole.admin).first() is not None
+
+
+def list_all_users(db: Session) -> list[User]:
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+
+def update_user_role(db: Session, user: User, role: UserRole) -> User:
+    user.role = role
+    db.commit()
+    db.refresh(user)
+    return user

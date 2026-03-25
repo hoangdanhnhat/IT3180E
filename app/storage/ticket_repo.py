@@ -7,6 +7,7 @@ from sqlalchemy import extract, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.storage.models import (
+    Attachment,
     Ticket,
     TicketCategory,
     TicketMessage,
@@ -195,6 +196,32 @@ def update_ticket_status(
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+# ---------------------------------------------------------------------------
+# Attachments
+# ---------------------------------------------------------------------------
+
+def create_attachment(
+    db: Session,
+    *,
+    ticket_id: uuid.UUID,
+    filename: str,
+    storage_path: str,
+    mime_type: str,
+    file_size: int,
+) -> Attachment:
+    attachment = Attachment(
+        ticket_id=ticket_id,
+        filename=filename,
+        storage_path=storage_path,
+        mime_type=mime_type,
+        file_size=file_size,
+    )
+    db.add(attachment)
+    db.commit()
+    db.refresh(attachment)
+    return attachment
 
 
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
-from app.api.schemas import LoginRequest, RefreshRequest, TokenResponse, UserOut
+from app.api.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserOut
 from app.core.db import get_db
 from app.core.exceptions import CredentialsException
 from app.core.security import (
@@ -18,6 +18,26 @@ from app.storage import user_repo
 from app.storage.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/register", response_model=TokenResponse, status_code=201)
+def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    """Create a new customer account and return tokens immediately."""
+    if user_repo.get_user_by_email(db, body.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists",
+        )
+    user = user_repo.create_user(
+        db,
+        email=body.email,
+        password=body.password,
+        full_name=body.full_name,
+    )
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+    )
 
 
 @router.post("/login", response_model=TokenResponse)

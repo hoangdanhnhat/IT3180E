@@ -128,3 +128,153 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0 1.25rem; 
 
 /* ------------------------------------------------------------------ Footer */
 footer { color: var(--muted); font-size: .8rem; }
+
+/* ------------------------------------------------------------------ Auth switch link */
+.auth-switch {
+  text-align: center;
+  font-size: .85rem;
+  color: var(--muted);
+  margin-top: 1rem;
+}
+.auth-switch a { color: var(--primary); text-decoration: none; font-weight: 500; }
+.auth-switch a:hover { text-decoration: underline; }
+
+.field-hint { font-size: .75rem; color: var(--muted); font-weight: 400; }
+
+/* ------------------------------------------------------------------ Registration success */
+#register-success {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: 1.5rem 0 .5rem;
+  gap: .75rem;
+}
+.reg-success-icon {
+  width: 3.5rem; height: 3.5rem; border-radius: 50%;
+  background: #dcfce7; color: var(--success);
+  font-size: 1.75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.reg-success-title { font-size: 1.3rem; font-weight: 700; }
+.reg-success-msg   { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+#register-success .btn { margin-top: .5rem; }
+
+/* ------------------------------------------------------------------ Wide card */
+.card-wide { max-width: 760px; }
+
+/* ------------------------------------------------------------------ Tabs */
+.tabs {
+  display: flex;
+  gap: .15rem;
+  border-bottom: 2px solid var(--border);
+  margin: 1rem 0 1.25rem;
+}
+.tab {
+  background: none; border: none;
+  padding: .5rem .9rem;
+  font-size: .875rem; font-weight: 500; color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  border-radius: 4px 4px 0 0;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* ------------------------------------------------------------------ Ticket list */
+.ticket-list { list-style: none; display: flex; flex-direction: column; gap: .55rem; }
+.ticket-item {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .8rem 1rem; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ticket-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(79,70,229,.1);
+}
+.ticket-item-top { display: flex; align-items: center; gap: .4rem; margin-bottom: .3rem; flex-wrap: wrap; }
+.ticket-number-badge {
+  font-family: monospace; font-size: .78rem; font-weight: 700;
+  background: #ede9fe; color: var(--primary);
+  padding: .15rem .45rem; border-radius: 4px;
+}
+.ticket-subject { font-size: .95rem; font-weight: 500; margin-bottom: .15rem; }
+.ticket-meta { font-size: .78rem; color: var(--muted); text-transform: capitalize; }
+
+/* ------------------------------------------------------------------ Badge colour variants */
+.badge-blue   { background: #dbeafe; color: #1d4ed8; }
+.badge-yellow { background: #fef9c3; color: #854d0e; }
+.badge-orange { background: #ffedd5; color: #c2410c; }
+.badge-red    { background: #fee2e2; color: #b91c1c; }
+.badge-muted  { background: var(--bg); color: var(--muted); }
+
+/* ------------------------------------------------------------------ Ticket detail */
+.btn-back {
+  background: none; border: none; color: var(--primary);
+  font-size: .875rem; font-weight: 500; cursor: pointer;
+  padding: 0; margin-bottom: 1rem; display: inline-block;
+}
+.btn-back:hover { text-decoration: underline; }
+.ticket-detail-header { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .65rem; }
+.detail-subject { font-size: 1.1rem; font-weight: 600; margin-bottom: .45rem; }
+.detail-description {
+  color: var(--muted); font-size: .9rem;
+  margin-bottom: 1.25rem; line-height: 1.55; white-space: pre-wrap;
+}
+.tag {
+  display: inline-block;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: .15rem .45rem; font-size: .75rem; color: var(--muted); text-transform: capitalize;
+}
+.tag-internal { background: #fef9c3; border-color: #fde68a; color: #92400e; }
+
+/* ------------------------------------------------------------------ Messages */
+.messages-section { border-top: 1px solid var(--border); padding-top: 1rem; }
+.section-heading { font-size: .9rem; font-weight: 600; margin-bottom: .75rem; }
+.messages-list {
+  display: flex; flex-direction: column; gap: .55rem;
+  margin-bottom: .85rem; max-height: 280px; overflow-y: auto;
+}
+.message-bubble {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: .65rem .85rem;
+}
+.message-bubble.internal { background: #fffbeb; border-color: #fde68a; }
+.message-meta {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .78rem; margin-bottom: .3rem; flex-wrap: wrap;
+}
+.message-content { font-size: .9rem; line-height: 1.5; white-space: pre-wrap; }
+
+/* ------------------------------------------------------------------ Reply form */
+.reply-form { display: flex; flex-direction: column; gap: .55rem; }
+.reply-form textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 8px;
+  padding: .6rem .8rem; font-size: .9rem; resize: vertical;
+  font-family: inherit; outline: none; transition: border-color .15s;
+}
+.reply-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+#reply-btn { width: auto; }
+
+/* ------------------------------------------------------------------ New Ticket form */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+select, #ticket-description {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .6rem .8rem; font-size: .95rem; outline: none;
+  transition: border-color .15s; width: 100%;
+  background: white; font-family: inherit;
+}
+#ticket-description { resize: vertical; }
+select:focus, #ticket-description:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+}
+.checkbox-label { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; }
+.checkbox-label input[type="checkbox"] { width: auto; accent-color: var(--primary); }
+
+/* ------------------------------------------------------------------ Utilities */
+.muted-text { color: var(--muted); font-size: .875rem; }
+.empty-msg  { color: var(--muted); font-size: .9rem; text-align: center; padding: 2rem 0; }
+
+/* ------------------------------------------------------------------ Responsive */
+@media (max-width: 520px) {
+  .form-row { grid-template-columns: 1fr; }
+  .card-wide { padding: 1.5rem 1rem; }
+}

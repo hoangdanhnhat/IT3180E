@@ -1,4 +1,14 @@
 # syntax=docker/dockerfile:1
+
+# ─── Stage 1: Build React frontend ──────────────────────────────────────────
+FROM node:20-slim AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ─── Stage 2: Python / FastAPI ───────────────────────────────────────────────
 FROM python:3.12-slim
 
 # System deps
@@ -14,6 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project source
 COPY . .
+
+# Overlay the built React app
+COPY --from=frontend-build /app/frontend/dist frontend/dist
 
 # Create a non-root user for security
 RUN adduser --disabled-password --gecos "" appuser \

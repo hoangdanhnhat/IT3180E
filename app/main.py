@@ -46,17 +46,20 @@ def health():
 
 
 # ---------------------------------------------------------------------------
-# Serve simple frontend (static files + SPA index)
+# Serve React frontend (Vite build output)
 # ---------------------------------------------------------------------------
 _FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+_DIST_DIR = os.path.join(_FRONTEND_DIR, "dist")
 
-if os.path.isdir(os.path.join(_FRONTEND_DIR, "static")):
-    app.mount("/static", StaticFiles(directory=os.path.join(_FRONTEND_DIR, "static")), name="static")
+if os.path.isdir(os.path.join(_DIST_DIR, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(_DIST_DIR, "assets")), name="assets")
 
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
 def serve_frontend(full_path: str):
-    index = os.path.join(_FRONTEND_DIR, "index.html")
-    return FileResponse(index)
+    index = os.path.join(_DIST_DIR, "index.html")
+    if os.path.isfile(index):
+        return FileResponse(index)
+    return {"detail": "Frontend not built. Run: cd frontend && npm run build"}

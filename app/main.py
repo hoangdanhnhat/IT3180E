@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routers import auth
+from app.api.routers import auth, tickets
 from app.core.config import settings
 
 app = FastAPI(
@@ -30,6 +30,7 @@ app.add_middleware(
 # API routers
 # ---------------------------------------------------------------------------
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(tickets.router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Health check

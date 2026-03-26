@@ -57,6 +57,10 @@ def list_public_tickets(db: Session, q: str | None = None) -> list[Ticket]:
     return ticket_repo.list_public_resolved_tickets(db, q)
 
 
+def list_assigned_tickets(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
+    return ticket_repo.list_tickets_assigned_to(db, agent_id)
+
+
 # ---------------------------------------------------------------------------
 # Messages
 # ---------------------------------------------------------------------------
@@ -76,6 +80,27 @@ def add_message(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only agents and admins may post internal notes",
         )
+
+    # Agents (not admins) may only reply to tickets assigned to them
+    if sender_role == UserRole.agent and ticket.assigned_to != sender_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only reply to tickets assigned to you",
+        )
+
+    # If an agent/admin replies to an Open ticket → auto-transition to In Progress
+    if (
+        sender_role in (UserRole.agent, UserRole.admin)
+        and ticket.status == TicketStatus.open
+    ):
+        ticket_repo.update_ticket_status(
+            db,
+            ticket,
+            TicketStatus.in_progress,
+            sender_id,
+            note="Agent replied; ticket moved to In Progress",
+        )
+
     # If a customer replies on a Pending Customer ticket → auto-transition to In Progress
     if (
         sender_role == UserRole.customer
@@ -139,3 +164,12 @@ def assign_ticket(
     agent: object,  # User object – validated by caller
 ) -> Ticket:
     return ticket_repo.assign_ticket(db, ticket, agent_id)
+
+
+# ---------------------------------------------------------------------------
+# Scheduled maintenance
+# ---------------------------------------------------------------------------
+
+def auto_close_stale_tickets(db: Session) -> int:
+    """Close resolved tickets older than 7 days. Returns count closed."""
+    return ticket_repo.auto_close_stale_tickets(db)

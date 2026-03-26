@@ -126,6 +126,10 @@ class AssignUpdate(BaseModel):
     agent_id: uuid.UUID
 
 
+class PriorityUpdate(BaseModel):
+    priority: TicketPriority
+
+
 # ---------------------------------------------------------------------------
 # Attachments
 # ---------------------------------------------------------------------------
@@ -178,6 +182,22 @@ class UserAdminOut(BaseModel):
     ticket_count: int = 0
 
     model_config = {"from_attributes": True}
+
+
+class TicketAdminListOut(BaseModel):
+    id: uuid.UUID
+    ticket_number: str
+    subject: str
+    category: TicketCategory
+    priority: TicketPriority
+    status: TicketStatus
+    is_public: bool
+    user_id: uuid.UUID
+    assigned_to: uuid.UUID | None
+    submitter_name: str
+    assignee_name: str | None
+    created_at: datetime
+    updated_at: datetime
 
 
 # ---------------------------------------------------------------------------

@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom'
 import { StatusBadge, PriorityBadge } from './ui/Badge'
 import { CATEGORY_LABELS } from '../constants/enums'
 
-export default function TicketCard({ ticket }) {
+export default function TicketCard({ ticket, onClick }) {
   const navigate = useNavigate()
   return (
     <div
-      onClick={() => navigate(`/dashboard/tickets/${ticket.id}`)}
+      onClick={onClick ?? (() => navigate(`/dashboard/tickets/${ticket.id}`))}
       className="bg-white border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-primary hover:shadow-sm transition-all"
     >
       <div className="flex items-start justify-between gap-4">

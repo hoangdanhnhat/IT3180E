@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 
-export default function ProtectedRoute({ requireAdmin = false }) {
+export default function ProtectedRoute({ requireAdmin = false, requireAgentOrAdmin = false }) {
   const { accessToken, user } = useAuthStore()
 
   if (!accessToken) {
@@ -9,6 +9,10 @@ export default function ProtectedRoute({ requireAdmin = false }) {
   }
 
   if (requireAdmin && user && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  if (requireAgentOrAdmin && user && user.role !== 'agent' && user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />
   }
 

@@ -13,6 +13,9 @@ import NewTicketPage from './pages/dashboard/NewTicketPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import UsersPage from './pages/admin/UsersPage'
 import CreateUserPage from './pages/admin/CreateUserPage'
+import AdminTicketsPage from './pages/admin/AdminTicketsPage'
+import AgentLayout from './pages/agent/AgentLayout'
+import AgentTicketsPage from './pages/agent/AgentTicketsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Spinner from './components/ui/Spinner'
 
@@ -75,12 +78,22 @@ export default function App() {
         </Route>
       </Route>
 
+      {/* Agent portal routes */}
+      <Route element={<ProtectedRoute requireAgentOrAdmin />}>
+        <Route path="/agent" element={<AgentLayout />}>
+          <Route index element={<Navigate to="tickets" replace />} />
+          <Route path="tickets" element={<AgentTicketsPage />} />
+          <Route path="tickets/:id" element={<TicketDetailPage />} />
+        </Route>
+      </Route>
+
       {/* Admin-only routes */}
       <Route element={<ProtectedRoute requireAdmin />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="users" replace />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="create-user" element={<CreateUserPage />} />
+          <Route path="tickets" element={<AdminTicketsPage />} />
         </Route>
       </Route>
 

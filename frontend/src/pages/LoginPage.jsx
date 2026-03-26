@@ -30,7 +30,10 @@ export default function LoginPage() {
       login(tokens, null)
       const me = await getMe()
       login(tokens, me)
-      navigate(me.role === 'admin' ? '/admin/users' : '/dashboard', { replace: true })
+      navigate(
+        me.role === 'admin' ? '/admin/users' : me.role === 'agent' ? '/agent/tickets' : '/dashboard',
+        { replace: true },
+      )
     } catch (err) {
       if (err.response?.status === 401) setError('Invalid email or password.')
       else if (err.response?.status === 403) setError('Your account has been deactivated.')

@@ -3,12 +3,10 @@ import { useAuthStore } from '../../store/authStore'
 import { logout as logoutApi } from '../../api/auth'
 
 const TABS = [
-  { to: '/admin/users', label: 'Users' },
-  { to: '/admin/create-user', label: 'Create Account' },
-  { to: '/admin/tickets', label: 'All Tickets' },
+  { to: '/agent/tickets', label: 'My Tickets' },
 ]
 
-export default function AdminLayout() {
+export default function AgentLayout() {
   const { logout, user } = useAuthStore()
   const navigate = useNavigate()
 
@@ -21,7 +19,7 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <div className="text-lg font-bold text-primary">UFMS — Admin</div>
+        <div className="text-lg font-bold text-primary">UFMS — Agent Portal</div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user?.full_name}</span>
           <button
@@ -33,7 +31,7 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto mt-6 px-4">
+      <div className="max-w-5xl mx-auto mt-6 px-4">
         <nav className="flex gap-6 border-b border-gray-200 mb-6">
           {TABS.map(({ to, label }) => (
             <NavLink

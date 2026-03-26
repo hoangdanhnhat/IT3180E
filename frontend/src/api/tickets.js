@@ -35,3 +35,6 @@ export const getPublicTickets = (q = '') =>
   client
     .get('/tickets/public', { params: q ? { q } : {} })
     .then((r) => r.data)
+
+export const listAssignedTickets = () =>
+  client.get('/agent/tickets').then((r) => r.data)

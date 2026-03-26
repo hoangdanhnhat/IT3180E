@@ -1,10 +1,10 @@
 """Low-level database access for tickets, messages, and status history."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import extract, func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.storage.models import (
     Attachment,
@@ -85,16 +85,20 @@ def create_ticket(
 
 
 def get_ticket_by_id(db: Session, ticket_id: uuid.UUID) -> Ticket | None:
-    return (
+    ticket = (
         db.query(Ticket)
         .options(
             joinedload(Ticket.submitter),
-            joinedload(Ticket.messages).joinedload(TicketMessage.sender),
+            selectinload(Ticket.messages)
+            .joinedload(TicketMessage.sender),
             joinedload(Ticket.status_history),
         )
         .filter(Ticket.id == ticket_id)
         .first()
     )
+    if ticket is not None:
+        ticket.messages.sort(key=lambda m: m.created_at)
+    return ticket
 
 
 def list_tickets_for_user(db: Session, user_id: uuid.UUID) -> list[Ticket]:
@@ -102,6 +106,33 @@ def list_tickets_for_user(db: Session, user_id: uuid.UUID) -> list[Ticket]:
         db.query(Ticket)
         .filter(Ticket.user_id == user_id)
         .order_by(Ticket.created_at.desc())
+        .all()
+    )
+
+
+def list_all_tickets(db: Session) -> list[Ticket]:
+    """Return all tickets with submitter and assignee relationships loaded."""
+    return (
+        db.query(Ticket)
+        .options(
+            joinedload(Ticket.submitter),
+            joinedload(Ticket.assignee),
+        )
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
+
+
+def list_tickets_assigned_to(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
+    """Return all tickets assigned to the given agent, newest-updated first."""
+    return (
+        db.query(Ticket)
+        .options(
+            joinedload(Ticket.submitter),
+            joinedload(Ticket.assignee),
+        )
+        .filter(Ticket.assigned_to == agent_id)
+        .order_by(Ticket.updated_at.desc())
         .all()
     )
 
@@ -159,7 +190,8 @@ _VALID_TRANSITIONS: dict[tuple[TicketStatus, TicketStatus], str] = {
     (TicketStatus.in_progress, TicketStatus.pending_customer): "agent",
     (TicketStatus.pending_customer, TicketStatus.in_progress): "customer",
     (TicketStatus.in_progress, TicketStatus.resolved): "agent",
-    (TicketStatus.resolved, TicketStatus.closed): "any",
+    # Only the customer (or system auto-close) may close or reopen a resolved ticket
+    (TicketStatus.resolved, TicketStatus.closed): "customer",
     (TicketStatus.resolved, TicketStatus.open): "customer",
 }
 
@@ -237,3 +269,46 @@ def assign_ticket(
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+def update_ticket_priority(
+    db: Session,
+    ticket: Ticket,
+    priority: TicketPriority,
+) -> Ticket:
+    ticket.priority = priority
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+# ---------------------------------------------------------------------------
+# Auto-close stale resolved tickets
+# ---------------------------------------------------------------------------
+
+_AUTO_CLOSE_AFTER_DAYS = 7
+
+
+def auto_close_stale_tickets(db: Session) -> int:
+    """Close all resolved tickets that have been resolved for >= 7 days.
+
+    Returns the number of tickets closed.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=_AUTO_CLOSE_AFTER_DAYS)
+    stale = (
+        db.query(Ticket)
+        .filter(
+            Ticket.status == TicketStatus.resolved,
+            Ticket.updated_at <= cutoff,
+        )
+        .all()
+    )
+    for ticket in stale:
+        update_ticket_status(
+            db,
+            ticket,
+            TicketStatus.closed,
+            ticket.user_id,
+            note="Automatically closed after 7 days with no activity",
+        )
+    return len(stale)

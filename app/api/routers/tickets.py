@@ -226,7 +226,7 @@ async def upload_attachment(
 
 
 # ---------------------------------------------------------------------------
-# Agent — change ticket status
+# Customer / Agent — change ticket status
 # ---------------------------------------------------------------------------
 
 @router.patch("/{ticket_id}/status", response_model=TicketOut)
@@ -234,13 +234,26 @@ def update_status(
     ticket_id: uuid.UUID,
     body: StatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_agent_or_admin),
+    current_user: User = Depends(get_current_user),
 ):
     """Transition a ticket to a new status.
 
-    Invalid transitions are rejected with **422 Unprocessable Entity**.
+    - Agents/admins may perform agent-role transitions on their assigned tickets.
+    - Customers may close or reopen (resolved → closed/open) their own tickets.
+    - Invalid transitions are rejected with **422 Unprocessable Entity**.
     """
     ticket = ticket_service.get_ticket_or_404(db, ticket_id)
+
+    is_agent_or_admin = current_user.role in (UserRole.agent, UserRole.admin)
+
+    if is_agent_or_admin:
+        if current_user.role == UserRole.agent and ticket.assigned_to != current_user.id:
+            raise ForbiddenException("You can only update the status of tickets assigned to you")
+    else:
+        # Customer: may only act on their own tickets
+        if ticket.user_id != current_user.id:
+            raise ForbiddenException("You do not have access to this ticket")
+
     return ticket_service.change_status(
         db,
         ticket=ticket,

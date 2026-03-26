@@ -1,18 +1,52 @@
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routers import admin, auth, tickets
+from app.api.routers import admin, agent, auth, tickets
 from app.core.config import settings
+from app.core.db import SessionLocal
+from app.services.ticket_service import auto_close_stale_tickets
+
+logger = logging.getLogger(__name__)
+
+_AUTO_CLOSE_INTERVAL_SECONDS = 3600  # run once per hour
+
+
+async def _auto_close_loop() -> None:
+    """Background task: periodically close resolved tickets older than 7 days."""
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                closed = auto_close_stale_tickets(db)
+                if closed:
+                    logger.info("Auto-closed %d stale resolved ticket(s)", closed)
+            finally:
+                db.close()
+        except Exception:
+            logger.exception("Error during auto-close sweep")
+        await asyncio.sleep(_AUTO_CLOSE_INTERVAL_SECONDS)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_auto_close_loop())
+    yield
+    task.cancel()
+
 
 app = FastAPI(
     title="UFMS — User Feedback Management System",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # Ensure upload directory exists
@@ -35,6 +69,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tickets.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(agent.router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Health check

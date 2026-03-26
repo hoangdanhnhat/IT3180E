@@ -5,7 +5,7 @@ import { createTicket, uploadAttachment } from '../../api/tickets'
 import FileDropZone from '../../components/FileDropZone'
 import Button from '../../components/ui/Button'
 import Alert from '../../components/ui/Alert'
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '../../constants/enums'
+import { CATEGORY_LABELS } from '../../constants/enums'
 
 const INPUT = [
   'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm',
@@ -49,35 +49,22 @@ export default function NewTicketPage() {
       {error && <Alert type="error" className="mb-4">{error}</Alert>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              className={INPUT}
-              {...register('category', { required: 'Category is required' })}
-            >
-              <option value="">Select…</option>
-              {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            {errors.category && (
-              <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select className={INPUT} {...register('priority')}>
-              {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
-                <option key={val} value={val}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <select
+            className={INPUT}
+            {...register('category', { required: 'Category is required' })}
+          >
+            <option value="">Select…</option>
+            {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {errors.category && (
+            <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>
+          )}
         </div>
 
         <div>

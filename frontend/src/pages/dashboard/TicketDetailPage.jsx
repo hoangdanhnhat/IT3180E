@@ -11,12 +11,20 @@ import Alert from '../../components/ui/Alert'
 import Spinner from '../../components/ui/Spinner'
 import { CATEGORY_LABELS, STATUS_LABELS } from '../../constants/enums'
 
-// Valid status transitions (matches backend state machine)
-const TRANSITIONS = {
+// Valid status transitions per role (must match backend state machine)
+const AGENT_TRANSITIONS = {
   open: ['in_progress'],
   in_progress: ['pending_customer', 'resolved'],
   pending_customer: ['in_progress'],
-  resolved: ['closed', 'open'],
+  resolved: [],   // agents cannot close/reopen; only customers can
+  closed: [],
+}
+
+const CUSTOMER_TRANSITIONS = {
+  open: [],
+  in_progress: [],
+  pending_customer: [],
+  resolved: ['closed', 'open'],  // customer may close or reopen
   closed: [],
 }
 
@@ -33,6 +41,10 @@ export default function TicketDetailPage() {
     isLoading,
     error,
   } = useQuery({ queryKey: ['ticket', id], queryFn: () => getTicket(id) })
+
+  // Agents can only interact with tickets assigned to them; admins can interact with all
+  const isAssignedAgent =
+    user?.role === 'agent' ? ticket?.assigned_to === user?.id : true
 
   const {
     register,
@@ -66,10 +78,12 @@ export default function TicketDetailPage() {
   }
   if (error) return <Alert type="error">Failed to load ticket.</Alert>
 
-  const messages = (ticket.messages ?? []).filter(
-    (m) => !m.is_internal || isAgentOrAdmin
-  )
-  const nextStatuses = TRANSITIONS[ticket.status] ?? []
+  const messages = (ticket.messages ?? [])
+    .filter((m) => !m.is_internal || isAgentOrAdmin)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
+  const transitionMap = isAgentOrAdmin ? AGENT_TRANSITIONS : CUSTOMER_TRANSITIONS
+  const nextStatuses = transitionMap[ticket.status] ?? []
 
   return (
     <div>
@@ -97,7 +111,27 @@ export default function TicketDetailPage() {
             </div>
           )}
 
-          {ticket.status !== 'closed' && (
+          {ticket.status !== 'closed' && isAgentOrAdmin && !isAssignedAgent && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <Alert type="info">
+                You must be assigned to this ticket to reply or update its status.
+              </Alert>
+            </div>
+          )}
+
+          {/* Resolved notification — shown to customers only */}
+          {!isAgentOrAdmin && ticket.status === 'resolved' && (
+            <Alert type="warning">
+              Your ticket has been resolved and will be automatically closed after 7 days. If you
+              have any further questions or the issue persists, please reopen your ticket or submit
+              a new one. Thank you!
+            </Alert>
+          )}
+
+          {/* Reply form — hidden for customers when ticket is resolved or closed */}
+          {ticket.status !== 'closed'
+            && (isAgentOrAdmin ? isAssignedAgent : ticket.status !== 'resolved')
+            && (
             <form
               onSubmit={handleSubmit((d) => replyMutation.mutateAsync(d))}
               className="bg-white rounded-xl border border-gray-200 p-4 space-y-3"
@@ -146,7 +180,7 @@ export default function TicketDetailPage() {
             </dl>
           </div>
 
-          {isAgentOrAdmin && nextStatuses.length > 0 && (
+          {(isAgentOrAdmin ? isAssignedAgent : true) && nextStatuses.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
               <h3 className="text-sm font-semibold text-gray-900">Update Status</h3>
               <input

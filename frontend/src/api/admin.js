@@ -10,3 +10,8 @@ export const createUser = (data) =>
 
 export const updateUserRole = (userId, role) =>
   client.patch(`/admin/users/${userId}/role`, { role }).then((r) => r.data)
+
+export const listAllTickets = () => client.get('/admin/tickets').then((r) => r.data)
+
+export const updateTicketPriority = (ticketId, priority) =>
+  client.patch(`/admin/tickets/${ticketId}/priority`, { priority }).then((r) => r.data)

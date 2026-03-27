@@ -8,7 +8,7 @@ import { StatusBadge, PriorityBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Alert from '../../components/ui/Alert'
 import Spinner from '../../components/ui/Spinner'
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '../../constants/enums'
+import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '../../constants/enums'
 
 export default function AdminTicketsPage() {
   const qc = useQueryClient()
@@ -27,6 +27,20 @@ export default function AdminTicketsPage() {
   const [pendingPriority, setPendingPriority] = useState({})
   const [pendingAssignee, setPendingAssignee] = useState({})
   const [rowError, setRowError] = useState({})
+
+  const PAGE_SIZE = 15
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const [filterSearch, setFilterSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterPriority, setFilterPriority] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterPublic, setFilterPublic] = useState('')
+
+  const handleFilterChange = (setter) => (e) => {
+    setter(e.target.value)
+    setCurrentPage(1)
+  }
 
   const agents = (users ?? []).filter((u) => u.role === 'agent')
 
@@ -70,13 +84,99 @@ export default function AdminTicketsPage() {
     return <Alert type="error">Failed to load tickets.</Alert>
   }
 
+  const filteredTickets = (tickets ?? []).filter((t) => {
+    if (filterStatus && t.status !== filterStatus) return false
+    if (filterPriority && t.priority !== filterPriority) return false
+    if (filterCategory && t.category !== filterCategory) return false
+    if (filterPublic === 'public' && !t.is_public) return false
+    if (filterPublic === 'private' && t.is_public) return false
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase()
+      if (
+        !t.ticket_number?.toLowerCase().includes(q) &&
+        !t.subject?.toLowerCase().includes(q) &&
+        !t.submitter_name?.toLowerCase().includes(q)
+      ) return false
+    }
+    return true
+  })
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 mb-4">All Tickets</h2>
 
-      {tickets.length === 0 ? (
-        <p className="text-sm text-gray-500">No tickets found.</p>
-      ) : (
+      {/* Filter toolbar */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search ticket #, subject, submitter…"
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-w-[220px] flex-1"
+          value={filterSearch}
+          onChange={handleFilterChange(setFilterSearch)}
+        />
+        <select
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          value={filterStatus}
+          onChange={handleFilterChange(setFilterStatus)}
+        >
+          <option value="">All Statuses</option>
+          {Object.entries(STATUS_LABELS).map(([val, label]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+        <select
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          value={filterPriority}
+          onChange={handleFilterChange(setFilterPriority)}
+        >
+          <option value="">All Priorities</option>
+          {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+        <select
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          value={filterCategory}
+          onChange={handleFilterChange(setFilterCategory)}
+        >
+          <option value="">All Categories</option>
+          {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+        <select
+          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          value={filterPublic}
+          onChange={handleFilterChange(setFilterPublic)}
+        >
+          <option value="">Public &amp; Private</option>
+          <option value="public">Public only</option>
+          <option value="private">Private only</option>
+        </select>
+        {(filterSearch || filterStatus || filterPriority || filterCategory || filterPublic) && (
+          <button
+            className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50"
+            onClick={() => {
+              setFilterSearch('')
+              setFilterStatus('')
+              setFilterPriority('')
+              setFilterCategory('')
+              setFilterPublic('')
+              setCurrentPage(1)
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {filteredTickets.length === 0 ? (
+        <p className="text-sm text-gray-500">No tickets match the current filters.</p>
+      ) : (() => {
+        const totalPages = Math.ceil(filteredTickets.length / PAGE_SIZE)
+        const pagedTickets = filteredTickets.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+        return (
+        <>
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -88,12 +188,13 @@ export default function AdminTicketsPage() {
                 <th className="px-4 py-3">Priority</th>
                 <th className="px-4 py-3">Submitter</th>
                 <th className="px-4 py-3">Assigned Agent</th>
+                <th className="px-4 py-3">Public</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {tickets.map((ticket) => {
+              {pagedTickets.map((ticket) => {
                 const tid = ticket.id
                 const currentPriority = pendingPriority[tid] ?? ticket.priority
                 const priorityDirty = pendingPriority[tid] !== undefined
@@ -184,6 +285,14 @@ export default function AdminTicketsPage() {
                         )}
                       </div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        readOnly
+                        checked={ticket.is_public}
+                        className="h-4 w-4 accent-primary cursor-default"
+                      />
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
@@ -201,7 +310,32 @@ export default function AdminTicketsPage() {
             </tbody>
           </table>
         </div>
-      )}
+
+        {/* Pagination controls */}
+        <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+          <span>
+            Page {currentPage} of {totalPages} ({filteredTickets.length} tickets total)
+          </span>
+          <div className="flex gap-2">
+            <button
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => setCurrentPage((p) => p - 1)}
+              disabled={currentPage === 1}
+            >
+              ← Prev
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => setCurrentPage((p) => p + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+        </>
+        )
+      })()}
     </div>
   )
 }

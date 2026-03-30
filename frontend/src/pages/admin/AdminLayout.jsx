@@ -6,6 +6,7 @@ const TABS = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/create-user', label: 'Create Account' },
   { to: '/admin/tickets', label: 'All Tickets' },
+  { to: '/admin/faq', label: 'FAQ' },
 ]
 
 export default function AdminLayout() {

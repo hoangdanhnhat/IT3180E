@@ -4,6 +4,7 @@ import { logout as logoutApi } from '../../api/auth'
 
 const TABS = [
   { to: '/agent/tickets', label: 'My Tickets' },
+  { to: '/agent/faq', label: 'FAQ' },
 ]
 
 export default function AgentLayout() {

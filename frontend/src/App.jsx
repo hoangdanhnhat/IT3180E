@@ -1,23 +1,24 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { useAuthStore } from './store/authStore'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { getMe } from './api/auth'
 import client from './api/client'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import DashboardLayout from './pages/dashboard/DashboardLayout'
-import OverviewPage from './pages/dashboard/OverviewPage'
-import MyTicketsPage from './pages/dashboard/MyTicketsPage'
-import TicketDetailPage from './pages/dashboard/TicketDetailPage'
-import NewTicketPage from './pages/dashboard/NewTicketPage'
-import AdminLayout from './pages/admin/AdminLayout'
-import UsersPage from './pages/admin/UsersPage'
-import CreateUserPage from './pages/admin/CreateUserPage'
-import AdminTicketsPage from './pages/admin/AdminTicketsPage'
-import AgentLayout from './pages/agent/AgentLayout'
-import AgentTicketsPage from './pages/agent/AgentTicketsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Spinner from './components/ui/Spinner'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import AdminLayout from './pages/admin/AdminLayout'
+import AdminTicketsPage from './pages/admin/AdminTicketsPage'
+import CreateUserPage from './pages/admin/CreateUserPage'
+import UsersPage from './pages/admin/UsersPage'
+import AgentLayout from './pages/agent/AgentLayout'
+import AgentTicketsPage from './pages/agent/AgentTicketsPage'
+import DashboardLayout from './pages/dashboard/DashboardLayout'
+import FaqPage from './pages/dashboard/FaqPage'
+import MyTicketsPage from './pages/dashboard/MyTicketsPage'
+import NewTicketPage from './pages/dashboard/NewTicketPage'
+import OverviewPage from './pages/dashboard/OverviewPage'
+import TicketDetailPage from './pages/dashboard/TicketDetailPage'
+import { useAuthStore } from './store/authStore'
 
 export default function App() {
   const { accessToken, refreshToken, login, logout, setUser } = useAuthStore()
@@ -75,6 +76,7 @@ export default function App() {
           <Route path="my-tickets" element={<MyTicketsPage />} />
           <Route path="tickets/:id" element={<TicketDetailPage />} />
           <Route path="new-ticket" element={<NewTicketPage />} />
+          <Route path="faq" element={<FaqPage />} />
         </Route>
       </Route>
 
@@ -84,6 +86,7 @@ export default function App() {
           <Route index element={<Navigate to="tickets" replace />} />
           <Route path="tickets" element={<AgentTicketsPage />} />
           <Route path="tickets/:id" element={<TicketDetailPage />} />
+          <Route path="faq" element={<FaqPage />} />
         </Route>
       </Route>
 
@@ -94,6 +97,7 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="create-user" element={<CreateUserPage />} />
           <Route path="tickets" element={<AdminTicketsPage />} />
+          <Route path="faq" element={<FaqPage />} />
         </Route>
       </Route>
 

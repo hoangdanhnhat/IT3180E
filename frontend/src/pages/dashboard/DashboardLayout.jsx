@@ -6,6 +6,7 @@ const TABS = [
   { to: '/dashboard', label: 'Overview', end: true },
   { to: '/dashboard/my-tickets', label: 'My Tickets' },
   { to: '/dashboard/new-ticket', label: 'New Ticket' },
+  { to: '/dashboard/faq', label: 'FAQ' },
 ]
 
 export default function DashboardLayout() {

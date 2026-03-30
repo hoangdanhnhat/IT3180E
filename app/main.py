@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routers import admin, agent, auth, tickets
+from app.api.routers import admin, agent, auth, faq, tickets
 from app.core.config import settings
 from app.core.db import SessionLocal
 from app.services.ticket_service import auto_close_stale_tickets
@@ -70,6 +70,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tickets.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(agent.router, prefix="/api/v1")
+app.include_router(faq.router, prefix="/api/v1")
 
 # ---------------------------------------------------------------------------
 # Health check

@@ -106,10 +106,26 @@ class StatusHistoryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ---------------------------------------------------------------------------
+# Attachments
+# ---------------------------------------------------------------------------
+
+class AttachmentOut(BaseModel):
+    id: uuid.UUID
+    ticket_id: uuid.UUID
+    filename: str
+    mime_type: str
+    file_size: int
+    url: str
+
+    model_config = {"from_attributes": True}
+
+
 class TicketDetail(TicketOut):
     submitter: UserBrief
     messages: list[MessageOut]
     status_history: list[StatusHistoryOut]
+    attachments: list[AttachmentOut] = []
 
 
 class MessageCreate(BaseModel):
@@ -128,21 +144,6 @@ class AssignUpdate(BaseModel):
 
 class PriorityUpdate(BaseModel):
     priority: TicketPriority
-
-
-# ---------------------------------------------------------------------------
-# Attachments
-# ---------------------------------------------------------------------------
-
-class AttachmentOut(BaseModel):
-    id: uuid.UUID
-    ticket_id: uuid.UUID
-    filename: str
-    mime_type: str
-    file_size: int
-    url: str
-
-    model_config = {"from_attributes": True}
 
 
 # ---------------------------------------------------------------------------

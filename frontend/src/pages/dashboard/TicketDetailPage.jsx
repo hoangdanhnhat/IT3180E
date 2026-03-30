@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { getTicket, addMessage, updateStatus } from '../../api/tickets'
+import { getTicket, addMessage, updateStatus, downloadAttachment, viewAttachment } from '../../api/tickets'
 import { useAuthStore } from '../../store/authStore'
 import MessageBubble from '../../components/MessageBubble'
 import { StatusBadge, PriorityBadge } from '../../components/ui/Badge'
@@ -81,6 +81,11 @@ export default function TicketDetailPage() {
   const messages = (ticket.messages ?? [])
     .filter((m) => !m.is_internal || isAgentOrAdmin)
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
+  const canViewAttachments =
+    user?.role === 'admin' ||
+    ticket.user_id === user?.id ||
+    (user?.role === 'agent' && ticket.assigned_to === user?.id)
 
   const transitionMap = isAgentOrAdmin ? AGENT_TRANSITIONS : CUSTOMER_TRANSITIONS
   const nextStatuses = transitionMap[ticket.status] ?? []
@@ -221,6 +226,51 @@ export default function TicketDetailPage() {
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+
+          {/* Attachments */}
+          {canViewAttachments && ticket.attachments?.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Attachments</h3>
+              <ul className="space-y-2">
+                {ticket.attachments.map((att) => {
+                  const isImage = att.mime_type?.startsWith('image/')
+                  const sizeKB = (att.file_size / 1024).toFixed(1)
+                  const sizeLabel = att.file_size >= 1048576
+                    ? `${(att.file_size / 1048576).toFixed(1)} MB`
+                    : `${sizeKB} KB`
+                  return (
+                    <li key={att.id} className="flex items-center justify-between gap-2 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-gray-400">
+                          {isImage ? '🖼️' : '📄'}
+                        </span>
+                        <span className="text-gray-700 truncate" title={att.filename}>
+                          {att.filename}
+                        </span>
+                        <span className="text-xs text-gray-400 shrink-0">{sizeLabel}</span>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        {isImage && (
+                          <button
+                            onClick={() => viewAttachment(ticket.id, att.id)}
+                            className="px-2.5 py-1 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                          >
+                            View
+                          </button>
+                        )}
+                        <button
+                          onClick={() => downloadAttachment(ticket.id, att.id, att.filename)}
+                          className="px-2.5 py-1 rounded-md border border-gray-300 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                        >
+                          Download
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
             </div>
           )}
         </div>

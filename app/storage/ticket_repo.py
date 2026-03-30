@@ -92,6 +92,7 @@ def get_ticket_by_id(db: Session, ticket_id: uuid.UUID) -> Ticket | None:
             selectinload(Ticket.messages)
             .joinedload(TicketMessage.sender),
             joinedload(Ticket.status_history),
+            selectinload(Ticket.attachments),
         )
         .filter(Ticket.id == ticket_id)
         .first()

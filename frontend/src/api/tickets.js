@@ -26,6 +26,30 @@ export const uploadAttachment = (id, file) => {
 export const updateStatus = (id, status, note = '') =>
   client.patch(`/tickets/${id}/status`, { status, note }).then((r) => r.data)
 
+export const downloadAttachment = async (ticketId, attachmentId, filename) => {
+  const res = await client.get(
+    `/tickets/${ticketId}/attachments/${attachmentId}/download`,
+    { responseType: 'blob' },
+  )
+  const url = window.URL.createObjectURL(res.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export const viewAttachment = async (ticketId, attachmentId) => {
+  const res = await client.get(
+    `/tickets/${ticketId}/attachments/${attachmentId}/download`,
+    { responseType: 'blob' },
+  )
+  const url = window.URL.createObjectURL(res.data)
+  window.open(url, '_blank')
+}
+
 export const assignTicket = (id, agentId) =>
   client
     .patch(`/tickets/${id}/assign`, { agent_id: agentId })

@@ -16,6 +16,7 @@ import os
 import uuid
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -123,7 +124,65 @@ def get_ticket(
     if not is_agent_or_admin:
         ticket.messages = [m for m in ticket.messages if not m.is_internal]
 
-    return ticket
+    # Build TicketDetail with attachment URLs.
+    # model_validate would fail on ORM Attachment objects (no `url` column),
+    # so we hide them before validation and inject the enriched DTOs after.
+    orm_attachments = list(ticket.attachments)
+    ticket.attachments = []
+
+    detail = TicketDetail.model_validate(ticket)
+
+    ticket.attachments = orm_attachments  # restore (keeps session state clean)
+    detail.attachments = [
+        AttachmentOut(
+            id=a.id,
+            ticket_id=a.ticket_id,
+            filename=a.filename,
+            mime_type=a.mime_type,
+            file_size=a.file_size,
+            url=f"/api/v1/tickets/{ticket_id}/attachments/{a.id}/download",
+        )
+        for a in orm_attachments
+    ]
+    return detail
+
+
+# ---------------------------------------------------------------------------
+# Customer / Agent — download attachment (secure)
+# ---------------------------------------------------------------------------
+
+@router.get("/{ticket_id}/attachments/{attachment_id}/download")
+def download_attachment(
+    ticket_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download an attachment. Only the submitter, assigned agent, or admin may access."""
+    ticket = ticket_service.get_ticket_or_404(db, ticket_id)
+
+    is_admin = current_user.role == UserRole.admin
+    is_assigned_agent = (
+        current_user.role == UserRole.agent and ticket.assigned_to == current_user.id
+    )
+    is_submitter = ticket.user_id == current_user.id
+
+    if not (is_admin or is_assigned_agent or is_submitter):
+        raise ForbiddenException("You do not have access to this attachment")
+
+    attachment = next((a for a in ticket.attachments if a.id == attachment_id), None)
+    if attachment is None:
+        raise NotFoundException("Attachment not found")
+
+    file_path = os.path.join(settings.UPLOAD_DIR, attachment.storage_path)
+    if not os.path.isfile(file_path):
+        raise NotFoundException("Attachment file not found on disk")
+
+    return FileResponse(
+        path=file_path,
+        media_type=attachment.mime_type,
+        filename=attachment.filename,
+    )
 
 
 # ---------------------------------------------------------------------------

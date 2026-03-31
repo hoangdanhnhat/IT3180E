@@ -16,14 +16,15 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm()
-  const [error, setError] = useState('')
+  const [globalError, setGlobalError] = useState('')
   const { login } = useAuthStore()
   const navigate = useNavigate()
 
   async function onSubmit({ full_name, email, password }) {
-    setError('')
+    setGlobalError('')
     try {
       const tokens = await registerApi(email, password, full_name)
       login(tokens, null)
@@ -31,9 +32,27 @@ export default function RegisterPage() {
       login(tokens, me)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      if (err.response?.status === 409)
-        setError('An account with this email already exists.')
-      else setError('Registration failed. Please try again.')
+      if (err.response?.status === 409) {
+        setError('email', { message: 'An account with this email already exists.' })
+      } else if (err.response?.status === 422) {
+        const detail = err.response.data?.detail
+        if (Array.isArray(detail)) {
+          const fieldMap = { email: 'email', password: 'password', full_name: 'full_name' }
+          let handled = false
+          detail.forEach(({ loc, msg }) => {
+            const field = loc?.[loc.length - 1]
+            if (fieldMap[field]) {
+              setError(fieldMap[field], { message: msg })
+              handled = true
+            }
+          })
+          if (!handled) setGlobalError('Registration failed. Please check your inputs.')
+        } else {
+          setGlobalError('Registration failed. Please check your inputs.')
+        }
+      } else {
+        setGlobalError('Registration failed. Please try again.')
+      }
     }
   }
 
@@ -46,7 +65,7 @@ export default function RegisterPage() {
           <p className="text-sm text-gray-500">User Feedback Management System</p>
         </div>
 
-        {error && <Alert type="error" className="mb-4">{error}</Alert>}
+        {globalError && <Alert type="error" className="mb-4">{globalError}</Alert>}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>
@@ -68,7 +87,13 @@ export default function RegisterPage() {
               type="email"
               placeholder="you@example.com"
               className={INPUT}
-              {...register('email', { required: 'Email is required' })}
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: 'Please enter a valid email address',
+                },
+              })}
             />
             {errors.email && (
               <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>

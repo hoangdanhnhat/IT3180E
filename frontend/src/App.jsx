@@ -18,6 +18,8 @@ import MyTicketsPage from './pages/dashboard/MyTicketsPage'
 import NewTicketPage from './pages/dashboard/NewTicketPage'
 import OverviewPage from './pages/dashboard/OverviewPage'
 import TicketDetailPage from './pages/dashboard/TicketDetailPage'
+import PublicTicketsPage from './pages/PublicTicketsPage'
+import PublicTicketDetailPage from './pages/PublicTicketDetailPage'
 import { useAuthStore } from './store/authStore'
 
 export default function App() {
@@ -101,6 +103,8 @@ export default function App() {
         </Route>
       </Route>
 
+      <Route path="/public" element={<PublicTicketsPage />} />
+      <Route path="/public/:ticketNumber" element={<PublicTicketDetailPage />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )

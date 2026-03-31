@@ -53,8 +53,12 @@ def list_own_tickets(db: Session, user_id: uuid.UUID) -> list[Ticket]:
     return ticket_repo.list_tickets_for_user(db, user_id)
 
 
-def list_public_tickets(db: Session, q: str | None = None) -> list[Ticket]:
-    return ticket_repo.list_public_resolved_tickets(db, q)
+def list_public_tickets(
+    db: Session,
+    q: str | None = None,
+    category=None,
+) -> list[Ticket]:
+    return ticket_repo.list_public_tickets(db, q, category)
 
 
 def list_assigned_tickets(db: Session, agent_id: uuid.UUID) -> list[Ticket]:

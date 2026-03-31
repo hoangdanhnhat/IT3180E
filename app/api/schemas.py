@@ -209,10 +209,42 @@ class PublicTicketOut(BaseModel):
     ticket_number: str
     subject: str
     category: TicketCategory
+    status: TicketStatus
     description: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PublicMessageOut(BaseModel):
+    content: str
+    created_at: datetime
+    sender_role: UserRole
+
+    model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm_message(cls, msg) -> "PublicMessageOut":
+        return cls(
+            content=msg.content,
+            created_at=msg.created_at,
+            sender_role=msg.sender.role,
+        )
+
+
+class PublicAttachmentOut(BaseModel):
+    id: uuid.UUID
+    filename: str
+    mime_type: str
+    file_size: int
+    url: str
+
+    model_config = {"from_attributes": True}
+
+
+class PublicTicketDetail(PublicTicketOut):
+    messages: list[PublicMessageOut] = []
+    attachments: list[PublicAttachmentOut] = []
 
 
 # ---------------------------------------------------------------------------

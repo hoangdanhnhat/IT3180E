@@ -28,6 +28,9 @@ from app.api.schemas import (
     AttachmentOut,
     MessageCreate,
     MessageOut,
+    PublicAttachmentOut,
+    PublicMessageOut,
+    PublicTicketDetail,
     PublicTicketOut,
     StatusUpdate,
     TicketCreate,
@@ -39,7 +42,7 @@ from app.core.db import get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.services import ticket_service
 from app.storage import ticket_repo, user_repo
-from app.storage.models import User, UserRole
+from app.storage.models import TicketCategory, User, UserRole
 
 _ALLOWED_MIME_TYPES = {
     "image/jpeg", "image/png", "image/gif", "image/webp",
@@ -57,10 +60,66 @@ router = APIRouter(prefix="/tickets", tags=["tickets"])
 @router.get("/public", response_model=list[PublicTicketOut])
 def list_public_tickets(
     q: str | None = Query(default=None, description="Keyword filter"),
+    category: TicketCategory | None = Query(default=None, description="Category filter"),
     db: Session = Depends(get_db),
 ):
-    """Return resolved public tickets. Optionally filter by keyword."""
-    return ticket_service.list_public_tickets(db, q)
+    """Return resolved public tickets. Optionally filter by keyword and/or category."""
+    return ticket_service.list_public_tickets(db, q, category)
+
+
+@router.get("/public/{ticket_number}", response_model=PublicTicketDetail)
+def get_public_ticket(ticket_number: str, db: Session = Depends(get_db)):
+    """Return detail of a single public ticket including its non-internal messages."""
+    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    orm_messages = list(ticket.messages)
+    orm_attachments = list(ticket.attachments)
+    ticket.messages = []
+    ticket.attachments = []
+    detail = PublicTicketDetail.model_validate(ticket)
+    ticket.messages = orm_messages
+    ticket.attachments = orm_attachments
+
+    detail.messages = [PublicMessageOut.from_orm_message(m) for m in orm_messages]
+    detail.attachments = [
+        PublicAttachmentOut(
+            id=a.id,
+            filename=a.filename,
+            mime_type=a.mime_type,
+            file_size=a.file_size,
+            url=f"/api/v1/tickets/public/{ticket_number}/attachments/{a.id}/download",
+        )
+        for a in orm_attachments
+    ]
+    return detail
+
+
+@router.get("/public/{ticket_number}/attachments/{attachment_id}/download")
+def download_public_attachment(
+    ticket_number: str,
+    attachment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+):
+    """Download an attachment from a public ticket. No authentication required."""
+    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    attachment = next((a for a in ticket.attachments if a.id == attachment_id), None)
+    if attachment is None:
+        raise NotFoundException("Attachment not found")
+
+    file_path = os.path.join(settings.UPLOAD_DIR, attachment.storage_path)
+    if not os.path.isfile(file_path):
+        raise NotFoundException("Attachment file not found on disk")
+
+    return FileResponse(
+        path=file_path,
+        media_type=attachment.mime_type,
+        filename=attachment.filename,
+    )
 
 
 # ---------------------------------------------------------------------------

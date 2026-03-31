@@ -102,6 +102,23 @@ def get_ticket_by_id(db: Session, ticket_id: uuid.UUID) -> Ticket | None:
     return ticket
 
 
+def get_public_ticket_by_number(db: Session, ticket_number: str) -> Ticket | None:
+    """Return a public ticket by ticket_number, loading non-internal messages and attachments."""
+    ticket = (
+        db.query(Ticket)
+        .options(
+            selectinload(Ticket.messages).joinedload(TicketMessage.sender),
+            selectinload(Ticket.attachments),
+        )
+        .filter(Ticket.ticket_number == ticket_number, Ticket.is_public.is_(True))
+        .first()
+    )
+    if ticket is not None:
+        ticket.messages = [m for m in ticket.messages if not m.is_internal]
+        ticket.messages.sort(key=lambda m: m.created_at)
+    return ticket
+
+
 def list_tickets_for_user(db: Session, user_id: uuid.UUID) -> list[Ticket]:
     return (
         db.query(Ticket)
@@ -138,11 +155,14 @@ def list_tickets_assigned_to(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
     )
 
 
-def list_public_resolved_tickets(db: Session, q: str | None = None) -> list[Ticket]:
-    """Return resolved public tickets, optionally filtered by keyword."""
+def list_public_tickets(
+    db: Session,
+    q: str | None = None,
+    category: TicketCategory | None = None,
+) -> list[Ticket]:
+    """Return all public tickets, optionally filtered by keyword and/or category."""
     query = db.query(Ticket).filter(
         Ticket.is_public.is_(True),
-        Ticket.status == TicketStatus.resolved,
     )
     if q:
         # Simple ILIKE search; full tsvector search is wired via triggers (Phase 2)
@@ -150,6 +170,8 @@ def list_public_resolved_tickets(db: Session, q: str | None = None) -> list[Tick
         query = query.filter(
             Ticket.subject.ilike(pattern) | Ticket.description.ilike(pattern)
         )
+    if category:
+        query = query.filter(Ticket.category == category)
     return query.order_by(Ticket.created_at.desc()).all()
 
 

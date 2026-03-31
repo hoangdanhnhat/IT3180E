@@ -30,8 +30,10 @@ ADMIN_NAME = os.getenv("ADMIN_NAME", "System Administrator")
 def main() -> None:
     db = SessionLocal()
     try:
-        if user_repo.admin_exists(db):
-            print("[seed_admin] An admin account already exists — skipping.")
+        # Check by exact email — fully idempotent across restarts
+        existing = user_repo.get_user_by_email(db, ADMIN_EMAIL)
+        if existing is not None:
+            print(f"[seed_admin] Admin account already exists: {existing.email} — skipping.")
             return
 
         admin = user_repo.create_user(

@@ -213,3 +213,37 @@ class PublicTicketOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# FAQ
+# ---------------------------------------------------------------------------
+
+class FaqOut(BaseModel):
+    id: uuid.UUID
+    question: str
+    answer: str
+    category: str
+    tags: list[str]
+    view_count: int
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FaqCreate(BaseModel):
+    question: str = Field(..., max_length=500)
+    answer: str
+    category: str = Field(..., max_length=100)
+    tags: list[str] = []
+    is_active: bool = True
+
+
+class FaqUpdate(BaseModel):
+    """All fields are optional — send only what needs to change (PATCH semantics)."""
+    question: str | None = Field(default=None, max_length=500)
+    answer: str | None = None
+    category: str | None = Field(default=None, max_length=100)
+    tags: list[str] | None = None
+    is_active: bool | None = None

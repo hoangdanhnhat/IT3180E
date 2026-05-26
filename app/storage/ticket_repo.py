@@ -89,6 +89,7 @@ def get_ticket_by_id(db: Session, ticket_id: uuid.UUID) -> Ticket | None:
         db.query(Ticket)
         .options(
             joinedload(Ticket.submitter),
+            joinedload(Ticket.assignee),
             selectinload(Ticket.messages)
             .joinedload(TicketMessage.sender),
             joinedload(Ticket.status_history),

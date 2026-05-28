@@ -9,8 +9,96 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.services import notification_service
 from app.storage import ticket_repo
-from app.storage.models import Ticket, TicketMessage, TicketStatus, UserRole
+from app.storage import user_repo
+from app.storage.models import Ticket, TicketMessage, TicketStatus, User, UserRole
+
+
+def _send_reply_notification(ticket: Ticket, message: TicketMessage, sender_role: UserRole) -> None:
+    try:
+        if message.is_internal:
+            return
+
+        sender = message.sender
+        recipient: User | None = None
+        if sender_role in (UserRole.agent, UserRole.admin):
+            recipient = ticket.submitter
+        elif sender_role == UserRole.customer:
+            recipient = ticket.assignee
+
+        if recipient is None:
+            notification_service.logger.warning(
+                "Skipping reply notification for ticket %s: no recipient for sender role %s",
+                ticket.ticket_number,
+                sender_role.value,
+            )
+            return
+
+        template = notification_service.format_reply_notification(
+            ticket=ticket,
+            sender_name=sender.full_name,
+            reply_content=message.content,
+        )
+        notification_service.send_email(
+            to_email=recipient.email,
+            subject=template.subject,
+            text_body=template.text_body,
+            html_body=template.html_body,
+        )
+    except Exception:
+        notification_service.logger.exception(
+            "Failed to process reply notification for ticket %s",
+            ticket.ticket_number,
+        )
+
+
+def _send_status_change_notifications(
+    *,
+    ticket: Ticket,
+    actor: User | None,
+    old_status: TicketStatus,
+    new_status: TicketStatus,
+    note: str | None,
+) -> None:
+    try:
+        actor_name = actor.full_name if actor else "A user"
+        template = notification_service.format_status_change_notification(
+            ticket=ticket,
+            actor_name=actor_name,
+            old_status=old_status,
+            new_status=new_status,
+            note=note,
+        )
+
+        recipients = [ticket.submitter, ticket.assignee]
+        seen: set[str] = set()
+        for recipient in recipients:
+            if recipient is None:
+                notification_service.logger.warning(
+                    "Skipping status notification for ticket %s: missing recipient",
+                    ticket.ticket_number,
+                )
+                continue
+            if not recipient.email or recipient.email in seen:
+                if not recipient.email:
+                    notification_service.logger.warning(
+                        "Skipping status notification for ticket %s: missing email",
+                        ticket.ticket_number,
+                    )
+                continue
+            seen.add(recipient.email)
+            notification_service.send_email(
+                to_email=recipient.email,
+                subject=template.subject,
+                text_body=template.text_body,
+                html_body=template.html_body,
+            )
+    except Exception:
+        notification_service.logger.exception(
+            "Failed to process status notification for ticket %s",
+            ticket.ticket_number,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -118,13 +206,15 @@ def add_message(
             note="Customer replied; ticket moved back to In Progress",
         )
 
-    return ticket_repo.add_message(
+    message = ticket_repo.add_message(
         db,
         ticket_id=ticket.id,
         sender_id=sender_id,
         content=content,
         is_internal=is_internal,
     )
+    _send_reply_notification(ticket, message, sender_role)
+    return message
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +243,17 @@ def change_status(
             ),
         )
 
-    return ticket_repo.update_ticket_status(db, ticket, new_status, actor_id, note)
+    old_status = ticket.status
+    updated_ticket = ticket_repo.update_ticket_status(db, ticket, new_status, actor_id, note)
+    actor = user_repo.get_user_by_id(db, actor_id)
+    _send_status_change_notifications(
+        ticket=updated_ticket,
+        actor=actor,
+        old_status=old_status,
+        new_status=new_status,
+        note=note,
+    )
+    return updated_ticket
 
 
 # ---------------------------------------------------------------------------

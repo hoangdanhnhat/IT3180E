@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # App
     APP_ENV: str = "development"
+    APP_BASE_URL: str = "http://localhost:3000"
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # File uploads

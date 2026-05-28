@@ -31,6 +31,7 @@ coverage.xml
 htmlcov/
 .tox/
 nosetests.xml
+app/tests/
 
 # ── Type checkers / linters ───────────────────────────────────────────────────
 .mypy_cache/

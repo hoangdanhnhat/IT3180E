@@ -31,14 +31,6 @@ class UserRole(str, PyEnum):
     admin = "admin"
 
 
-class TicketCategory(str, PyEnum):
-    billing = "billing"
-    delays = "delays"
-    lost_found = "lost_found"
-    route = "route"
-    other = "other"
-
-
 class TicketPriority(str, PyEnum):
     low = "low"
     normal = "normal"
@@ -109,9 +101,7 @@ class Ticket(Base):
     )
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[TicketCategory] = mapped_column(
-        Enum(TicketCategory, name="ticketcategory"), nullable=False
-    )
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
     priority: Mapped[TicketPriority] = mapped_column(
         Enum(TicketPriority, name="ticketpriority"), nullable=False, default=TicketPriority.normal
     )
@@ -177,6 +167,17 @@ class FaqItem(Base):
 
     upvotes: Mapped[list["FaqUpvote"]] = relationship(
         "FaqUpvote", back_populates="faq", cascade="all, delete-orphan"
+    )
+
+
+class TicketCategoryOption(Base):
+    __tablename__ = "ticket_categories"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 

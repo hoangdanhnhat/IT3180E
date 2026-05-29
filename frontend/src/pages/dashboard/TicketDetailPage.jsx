@@ -17,7 +17,8 @@ import { StatusBadge, PriorityBadge } from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Alert from '../../components/ui/Alert'
 import Spinner from '../../components/ui/Spinner'
-import { CATEGORY_LABELS, STATUS_LABELS } from '../../constants/enums'
+import { STATUS_LABELS } from '../../constants/enums'
+import useTicketCategories from '../../hooks/useTicketCategories'
 
 // Valid status transitions per role (must match backend state machine)
 const AGENT_TRANSITIONS = {
@@ -43,6 +44,7 @@ export default function TicketDetailPage() {
   const qc = useQueryClient()
 
   const isAgentOrAdmin = user?.role === 'agent' || user?.role === 'admin'
+  const { categories, categoryLabels } = useTicketCategories()
 
   const {
     data: ticket,
@@ -123,6 +125,9 @@ export default function TicketDetailPage() {
   const nextStatuses = transitionMap[ticket.status] ?? []
   const selectedTransferCategory = transferCategory || ticket.category
   const transferDirty = selectedTransferCategory !== ticket.category
+  const transferCategories = categories.some((cat) => cat.key === ticket.category)
+    ? categories
+    : [{ key: ticket.category, label: categoryLabels[ticket.category] ?? ticket.category }, ...categories]
 
   return (
     <div>
@@ -201,7 +206,7 @@ export default function TicketDetailPage() {
                 { label: 'Priority', value: <PriorityBadge priority={ticket.priority} /> },
                 {
                   label: 'Category',
-                  value: CATEGORY_LABELS[ticket.category] ?? ticket.category,
+                  value: categoryLabels[ticket.category] ?? ticket.category,
                 },
                 {
                   label: 'Opened',
@@ -249,8 +254,8 @@ export default function TicketDetailPage() {
                     value={selectedTransferCategory}
                     onChange={(e) => setTransferCategory(e.target.value)}
                   >
-                    {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-                      <option key={val} value={val}>{label}</option>
+                    {transferCategories.map((cat) => (
+                      <option key={cat.key} value={cat.key}>{cat.label}</option>
                     ))}
                   </select>
                   <Button

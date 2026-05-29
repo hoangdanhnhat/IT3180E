@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom'
-import { CATEGORY_LABELS, STATUS_LABELS, STATUS_BADGE_CLASSES } from '../constants/enums'
+import { STATUS_LABELS, STATUS_BADGE_CLASSES } from '../constants/enums'
+import useTicketCategories from '../hooks/useTicketCategories'
 
 export default function PublicTicketCard({ ticket }) {
   const navigate = useNavigate()
+  const { categoryLabels } = useTicketCategories()
   return (
     <div
       onClick={() => navigate(`/public/${ticket.ticket_number}`)}
@@ -13,7 +15,7 @@ export default function PublicTicketCard({ ticket }) {
           <p className="text-xs text-gray-400 font-mono">{ticket.ticket_number}</p>
           <h3 className="font-semibold text-gray-900 truncate mt-0.5">{ticket.subject}</h3>
           <p className="text-sm text-primary font-medium mt-1">
-            {CATEGORY_LABELS[ticket.category] ?? ticket.category}
+            {categoryLabels[ticket.category] ?? ticket.category}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">

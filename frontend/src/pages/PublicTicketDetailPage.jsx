@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { getPublicTicket, downloadPublicAttachment } from '../api/tickets'
 import Spinner from '../components/ui/Spinner'
 import Alert from '../components/ui/Alert'
-import { CATEGORY_LABELS, STATUS_LABELS, STATUS_BADGE_CLASSES } from '../constants/enums'
+import { STATUS_LABELS, STATUS_BADGE_CLASSES } from '../constants/enums'
 import { useAuthStore } from '../store/authStore'
+import useTicketCategories from '../hooks/useTicketCategories'
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -15,6 +16,7 @@ function formatBytes(bytes) {
 export default function PublicTicketDetailPage() {
   const { ticketNumber } = useParams()
   const { accessToken } = useAuthStore()
+  const { categoryLabels } = useTicketCategories()
 
   const { data: ticket, isLoading, isError } = useQuery({
     queryKey: ['public-ticket', ticketNumber],
@@ -57,7 +59,7 @@ export default function PublicTicketDetailPage() {
                   <p className="text-xs text-gray-400 font-mono">{ticket.ticket_number}</p>
                   <h1 className="text-xl font-bold text-gray-900 mt-1">{ticket.subject}</h1>
                   <p className="text-sm text-primary font-medium mt-1">
-                    {CATEGORY_LABELS[ticket.category] ?? ticket.category}
+                    {categoryLabels[ticket.category] ?? ticket.category}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">

@@ -36,6 +36,7 @@ from app.api.schemas import (
     PublicTicketOut,
     StatusUpdate,
     TicketCategoryUpdate,
+    TicketCategoryOut,
     TicketCreate,
     TicketDetail,
     TicketOut,
@@ -45,7 +46,7 @@ from app.core.db import get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.services import ticket_service
 from app.storage import ticket_repo, user_repo
-from app.storage.models import TicketCategory, User, UserRole
+from app.storage.models import User, UserRole
 
 _ALLOWED_MIME_TYPES = {
     "image/jpeg", "image/png", "image/gif", "image/webp",
@@ -63,11 +64,17 @@ router = APIRouter(prefix="/tickets", tags=["tickets"])
 @router.get("/public", response_model=list[PublicTicketOut])
 def list_public_tickets(
     q: str | None = Query(default=None, description="Keyword filter"),
-    category: TicketCategory | None = Query(default=None, description="Category filter"),
+    category: str | None = Query(default=None, description="Category filter"),
     db: Session = Depends(get_db),
 ):
     """Return resolved public tickets. Optionally filter by keyword and/or category."""
     return ticket_service.list_public_tickets(db, q, category)
+
+
+@router.get("/categories", response_model=list[TicketCategoryOut])
+def list_ticket_categories(db: Session = Depends(get_db)):
+    """Return active ticket categories for forms and filters."""
+    return ticket_repo.list_ticket_categories(db)
 
 
 @router.get("/public/{ticket_number}", response_model=PublicTicketDetail)

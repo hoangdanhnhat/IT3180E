@@ -6,12 +6,13 @@ import TicketCard from '../../components/TicketCard'
 import Spinner from '../../components/ui/Spinner'
 import Alert from '../../components/ui/Alert'
 import { useAuthStore } from '../../store/authStore'
-import { CATEGORY_LABELS } from '../../constants/enums'
+import useTicketCategories from '../../hooks/useTicketCategories'
 
 export default function AgentTicketsPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [category, setCategory] = useState('')
+  const { categories } = useTicketCategories()
   const {
     data: tickets,
     isLoading,
@@ -44,8 +45,8 @@ export default function AgentTicketsPage() {
           onChange={(e) => setCategory(e.target.value)}
         >
           <option value="">All Categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+          {categories.map((cat) => (
+            <option key={cat.key} value={cat.key}>{cat.label}</option>
           ))}
         </select>
       </div>

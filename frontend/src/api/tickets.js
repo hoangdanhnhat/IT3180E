@@ -3,6 +3,9 @@ import client from './client'
 export const createTicket = (data) =>
   client.post('/tickets', data).then((r) => r.data)
 
+export const listTicketCategories = () =>
+  client.get('/tickets/categories').then((r) => r.data)
+
 export const listTickets = () => client.get('/tickets').then((r) => r.data)
 
 export const getTicket = (id) =>

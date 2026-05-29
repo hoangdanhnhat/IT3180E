@@ -17,14 +17,6 @@ CREATE TYPE userrole AS ENUM (
     'admin'
 );
 
-CREATE TYPE ticketcategory AS ENUM (
-    'billing',
-    'delays',
-    'lost_found',
-    'route',
-    'other'
-);
-
 CREATE TYPE ticketpriority AS ENUM (
     'low',
     'normal',
@@ -59,6 +51,26 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX ix_users_email ON users (email);
 
 -- =============================================================================
+-- TABLE: ticket_categories
+-- =============================================================================
+
+CREATE TABLE ticket_categories (
+    key             VARCHAR(100)    NOT NULL,
+    label           VARCHAR(100)    NOT NULL,
+    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+
+    CONSTRAINT pk_ticket_categories PRIMARY KEY (key)
+);
+
+INSERT INTO ticket_categories (key, label, is_active) VALUES
+    ('billing',    'Billing & Payments',       TRUE),
+    ('delays',     'Delays & Cancellations',   TRUE),
+    ('lost_found', 'Lost & Found',             TRUE),
+    ('route',      'Route Enquiry',            TRUE),
+    ('other',      'Other',                    TRUE);
+
+-- =============================================================================
 -- TABLE: tickets
 -- =============================================================================
 
@@ -69,7 +81,7 @@ CREATE TABLE tickets (
     assigned_to     UUID,
     subject         VARCHAR(255)    NOT NULL,
     description     TEXT            NOT NULL,
-    category        ticketcategory  NOT NULL,
+    category        VARCHAR(100)    NOT NULL,
     priority        ticketpriority  NOT NULL DEFAULT 'normal',
     status          ticketstatus    NOT NULL DEFAULT 'open',
     is_public       BOOLEAN         NOT NULL DEFAULT FALSE,

@@ -5,8 +5,8 @@ import { getPublicTickets } from '../api/tickets'
 import PublicTicketCard from '../components/PublicTicketCard'
 import Spinner from '../components/ui/Spinner'
 import Alert from '../components/ui/Alert'
-import { TicketCategory, CATEGORY_LABELS } from '../constants/enums'
 import { useAuthStore } from '../store/authStore'
+import useTicketCategories from '../hooks/useTicketCategories'
 
 const DEBOUNCE_MS = 350
 
@@ -15,6 +15,7 @@ export default function PublicTicketsPage() {
   const [q, setQ] = useState('')
   const [category, setCategory] = useState('')
   const { accessToken } = useAuthStore()
+  const { categories } = useTicketCategories()
 
   // Debounce the search input
   useEffect(() => {
@@ -63,9 +64,9 @@ export default function PublicTicketsPage() {
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="">All Categories</option>
-            {Object.values(TicketCategory).map((cat) => (
-              <option key={cat} value={cat}>
-                {CATEGORY_LABELS[cat]}
+            {categories.map((cat) => (
+              <option key={cat.key} value={cat.key}>
+                {cat.label}
               </option>
             ))}
           </select>

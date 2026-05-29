@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from app.storage.models import TicketCategory, TicketPriority, TicketStatus, UserRole
+from app.storage.models import TicketPriority, TicketStatus, UserRole
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ class UserOut(BaseModel):
 class TicketCreate(BaseModel):
     subject: str = Field(..., max_length=255)
     description: str
-    category: TicketCategory
+    category: str = Field(..., max_length=100)
     priority: TicketPriority = TicketPriority.normal
     is_public: bool = False
 
@@ -63,7 +63,7 @@ class TicketOut(BaseModel):
     ticket_number: str
     subject: str
     description: str
-    category: TicketCategory
+    category: str
     priority: TicketPriority
     status: TicketStatus
     is_public: bool
@@ -143,7 +143,7 @@ class AssignUpdate(BaseModel):
 
 
 class TicketCategoryUpdate(BaseModel):
-    category: TicketCategory
+    category: str = Field(..., max_length=100)
 
 
 class PriorityUpdate(BaseModel):
@@ -171,7 +171,7 @@ class TicketBrief(BaseModel):
     subject: str
     status: TicketStatus
     priority: TicketPriority
-    category: TicketCategory
+    category: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -193,7 +193,7 @@ class TicketAdminListOut(BaseModel):
     id: uuid.UUID
     ticket_number: str
     subject: str
-    category: TicketCategory
+    category: str
     priority: TicketPriority
     status: TicketStatus
     is_public: bool
@@ -212,7 +212,7 @@ class TicketAdminListOut(BaseModel):
 class PublicTicketOut(BaseModel):
     ticket_number: str
     subject: str
-    category: TicketCategory
+    category: str
     status: TicketStatus
     description: str
     created_at: datetime
@@ -249,6 +249,40 @@ class PublicAttachmentOut(BaseModel):
 class PublicTicketDetail(PublicTicketOut):
     messages: list[PublicMessageOut] = []
     attachments: list[PublicAttachmentOut] = []
+
+
+# ---------------------------------------------------------------------------
+# Ticket categories
+# ---------------------------------------------------------------------------
+
+class TicketCategoryOut(BaseModel):
+    key: str
+    label: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TicketCategoryCreate(BaseModel):
+    label: str = Field(..., min_length=1, max_length=100)
+    key: str | None = Field(default=None, max_length=100)
+    is_active: bool = True
+
+    @field_validator("key")
+    @classmethod
+    def normalize_key(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower().replace(" ", "_")
+        if not normalized:
+            return None
+        return normalized
+
+
+class TicketCategoryAdminUpdate(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=100)
+    is_active: bool | None = None
 
 
 # ---------------------------------------------------------------------------

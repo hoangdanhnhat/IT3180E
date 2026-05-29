@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { StatusBadge, PriorityBadge } from './ui/Badge'
-import { CATEGORY_LABELS } from '../constants/enums'
+import useTicketCategories from '../hooks/useTicketCategories'
 
 export default function TicketCard({ ticket, onClick }) {
   const navigate = useNavigate()
+  const { categoryLabels } = useTicketCategories()
   return (
     <div
       onClick={onClick ?? (() => navigate(`/dashboard/tickets/${ticket.id}`))}
@@ -14,7 +15,7 @@ export default function TicketCard({ ticket, onClick }) {
           <p className="text-xs text-gray-400 font-mono">{ticket.ticket_number}</p>
           <h3 className="font-semibold text-gray-900 truncate mt-0.5">{ticket.subject}</h3>
           <p className="text-sm text-gray-500 mt-1">
-            {CATEGORY_LABELS[ticket.category] ?? ticket.category}
+            {categoryLabels[ticket.category] ?? ticket.category}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">

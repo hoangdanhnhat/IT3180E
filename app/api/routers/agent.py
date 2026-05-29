@@ -15,7 +15,7 @@ from app.api.dependencies import require_agent_or_admin
 from app.api.schemas import TicketDetail, TicketOut
 from app.core.db import get_db
 from app.services import ticket_service
-from app.storage.models import TicketCategory, User
+from app.storage.models import User
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 
 @router.get("/tickets", response_model=list[TicketOut])
 def list_staff_tickets(
-    category: TicketCategory | None = Query(default=None, description="Category filter"),
+    category: str | None = Query(default=None, description="Category filter"),
     db: Session = Depends(get_db),
     _: User = Depends(require_agent_or_admin),
 ):

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, timedelta
+import re
 
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -9,13 +10,85 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.storage.models import (
     Attachment,
     Ticket,
-    TicketCategory,
+    TicketCategoryOption,
     TicketMessage,
     TicketPriority,
     TicketStatus,
     TicketStatusHistory,
     User,
 )
+
+
+DEFAULT_TICKET_CATEGORIES = (
+    ("billing", "Billing & Payments"),
+    ("delays", "Delays & Cancellations"),
+    ("lost_found", "Lost & Found"),
+    ("route", "Route Enquiry"),
+    ("other", "Other"),
+)
+
+
+def normalize_category_key(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
+    return normalized[:100]
+
+
+def list_ticket_categories(db: Session, *, include_inactive: bool = False) -> list[TicketCategoryOption]:
+    query = db.query(TicketCategoryOption)
+    if not include_inactive:
+        query = query.filter(TicketCategoryOption.is_active.is_(True))
+    return query.order_by(TicketCategoryOption.label.asc()).all()
+
+
+def get_ticket_category(db: Session, key: str) -> TicketCategoryOption | None:
+    return db.query(TicketCategoryOption).filter(TicketCategoryOption.key == key).first()
+
+
+def get_active_ticket_category(db: Session, key: str) -> TicketCategoryOption | None:
+    return (
+        db.query(TicketCategoryOption)
+        .filter(TicketCategoryOption.key == key, TicketCategoryOption.is_active.is_(True))
+        .first()
+    )
+
+
+def create_ticket_category(
+    db: Session,
+    *,
+    key: str,
+    label: str,
+    is_active: bool = True,
+) -> TicketCategoryOption:
+    category = TicketCategoryOption(key=key, label=label, is_active=is_active)
+    db.add(category)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+def update_ticket_category_option(
+    db: Session,
+    category: TicketCategoryOption,
+    *,
+    label: str | None = None,
+    is_active: bool | None = None,
+) -> TicketCategoryOption:
+    if label is not None:
+        category.label = label
+    if is_active is not None:
+        category.is_active = is_active
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+def count_tickets_in_category(db: Session, key: str) -> int:
+    return db.query(func.count(Ticket.id)).filter(Ticket.category == key).scalar() or 0
+
+
+def delete_ticket_category(db: Session, category: TicketCategoryOption) -> None:
+    db.delete(category)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +127,7 @@ def create_ticket(
     user_id: uuid.UUID,
     subject: str,
     description: str,
-    category: TicketCategory,
+    category: str,
     priority: TicketPriority,
     is_public: bool,
 ) -> Ticket:
@@ -156,10 +229,25 @@ def list_tickets_assigned_to(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
     )
 
 
+def list_staff_visible_tickets(
+    db: Session,
+    *,
+    category: str | None = None,
+) -> list[Ticket]:
+    """Return tickets visible to staff, optionally scoped by category."""
+    query = db.query(Ticket).options(
+        joinedload(Ticket.submitter),
+        joinedload(Ticket.assignee),
+    )
+    if category:
+        query = query.filter(Ticket.category == category)
+    return query.order_by(Ticket.updated_at.desc()).all()
+
+
 def list_public_tickets(
     db: Session,
     q: str | None = None,
-    category: TicketCategory | None = None,
+    category: str | None = None,
 ) -> list[Ticket]:
     """Return all public tickets, optionally filtered by keyword and/or category."""
     query = db.query(Ticket).filter(
@@ -287,9 +375,20 @@ def create_attachment(
 def assign_ticket(
     db: Session,
     ticket: Ticket,
-    agent_id: uuid.UUID,
+    agent_id: uuid.UUID | None,
 ) -> Ticket:
     ticket.assigned_to = agent_id
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+def update_ticket_category(
+    db: Session,
+    ticket: Ticket,
+    category: str,
+) -> Ticket:
+    ticket.category = category
     db.commit()
     db.refresh(ticket)
     return ticket

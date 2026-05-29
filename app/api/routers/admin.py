@@ -6,6 +6,10 @@ POST   /admin/users                         Admin — manually create a new acco
 PATCH  /admin/users/{user_id}/role          Admin — assign a role to an account
 GET    /admin/tickets                       Admin — list all tickets across all users
 PATCH  /admin/tickets/{ticket_id}/priority  Admin — change ticket priority
+GET    /admin/ticket-categories             Admin — list ticket categories
+POST   /admin/ticket-categories             Admin — create a ticket category
+PATCH  /admin/ticket-categories/{key}       Admin — update a ticket category
+DELETE /admin/ticket-categories/{key}       Admin — delete an unused ticket category
 """
 
 import uuid
@@ -19,6 +23,9 @@ from app.api.schemas import (
     AdminCreateUser,
     PriorityUpdate,
     RoleUpdate,
+    TicketCategoryAdminUpdate,
+    TicketCategoryCreate,
+    TicketCategoryOut,
     TicketAdminListOut,
     TicketBrief,
     UserAdminOut,
@@ -26,9 +33,81 @@ from app.api.schemas import (
 )
 from app.core.db import get_db
 from app.storage import ticket_repo, user_repo
-from app.storage.models import Ticket, TicketStatus, User
+from app.storage.models import Ticket, User
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/ticket-categories", response_model=list[TicketCategoryOut])
+def list_ticket_categories(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Return all ticket categories, including inactive ones."""
+    return ticket_repo.list_ticket_categories(db, include_inactive=True)
+
+
+@router.post("/ticket-categories", response_model=TicketCategoryOut, status_code=201)
+def create_ticket_category(
+    body: TicketCategoryCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Create a ticket category."""
+    key = ticket_repo.normalize_category_key(body.key or body.label)
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Category key cannot be empty",
+        )
+    if ticket_repo.get_ticket_category(db, key):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A ticket category with this key already exists",
+        )
+    return ticket_repo.create_ticket_category(
+        db,
+        key=key,
+        label=body.label.strip(),
+        is_active=body.is_active,
+    )
+
+
+@router.patch("/ticket-categories/{key}", response_model=TicketCategoryOut)
+def update_ticket_category(
+    key: str,
+    body: TicketCategoryAdminUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Update a ticket category label or active state."""
+    category = ticket_repo.get_ticket_category(db, key)
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    return ticket_repo.update_ticket_category_option(
+        db,
+        category,
+        label=body.label.strip() if body.label is not None else None,
+        is_active=body.is_active,
+    )
+
+
+@router.delete("/ticket-categories/{key}", status_code=204)
+def delete_ticket_category(
+    key: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Delete a ticket category only when no tickets still use it."""
+    category = ticket_repo.get_ticket_category(db, key)
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    if ticket_repo.count_tickets_in_category(db, key) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete a category that is used by existing tickets",
+        )
+    ticket_repo.delete_ticket_category(db, category)
 
 
 @router.get("/users", response_model=list[UserAdminOut])

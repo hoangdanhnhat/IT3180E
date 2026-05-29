@@ -5,7 +5,7 @@ import { createTicket, uploadAttachment } from '../../api/tickets'
 import FileDropZone from '../../components/FileDropZone'
 import Button from '../../components/ui/Button'
 import Alert from '../../components/ui/Alert'
-import { CATEGORY_LABELS } from '../../constants/enums'
+import useTicketCategories from '../../hooks/useTicketCategories'
 
 const INPUT = [
   'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm',
@@ -22,6 +22,7 @@ export default function NewTicketPage() {
 
   const [files, setFiles] = useState([])
   const [error, setError] = useState('')
+  const { categories, isLoading: categoriesLoading } = useTicketCategories()
 
   async function onSubmit(data) {
     setError('')
@@ -53,12 +54,13 @@ export default function NewTicketPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
           <select
             className={INPUT}
+            disabled={categoriesLoading}
             {...register('category', { required: 'Category is required' })}
           >
             <option value="">Select…</option>
-            {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
+            {categories.map((cat) => (
+              <option key={cat.key} value={cat.key}>
+                {cat.label}
               </option>
             ))}
           </select>

@@ -15,3 +15,15 @@ export const listAllTickets = () => client.get('/admin/tickets').then((r) => r.d
 
 export const updateTicketPriority = (ticketId, priority) =>
   client.patch(`/admin/tickets/${ticketId}/priority`, { priority }).then((r) => r.data)
+
+export const listTicketCategoriesAdmin = () =>
+  client.get('/admin/ticket-categories').then((r) => r.data)
+
+export const createTicketCategory = (data) =>
+  client.post('/admin/ticket-categories', data).then((r) => r.data)
+
+export const updateTicketCategory = (key, data) =>
+  client.patch(`/admin/ticket-categories/${key}`, data).then((r) => r.data)
+
+export const deleteTicketCategory = (key) =>
+  client.delete(`/admin/ticket-categories/${key}`)

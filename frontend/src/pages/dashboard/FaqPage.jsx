@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { listFaqs, listFaqCategories, getFaq, createFaq, deleteFaq } from '../../api/faq'
+import {
+  listFaqs,
+  listFaqCategories,
+  getFaq,
+  createFaq,
+  deleteFaq,
+  upvoteFaq,
+  removeFaqUpvote,
+} from '../../api/faq'
 import { useAuthStore } from '../../store/authStore'
 import Spinner from '../../components/ui/Spinner'
 
@@ -39,9 +47,48 @@ function CategoryChip({ label, active, onClick }) {
   )
 }
 
+function UpvoteButton({ faq, onChanged, compact = false }) {
+  const [saving, setSaving] = useState(false)
+
+  async function handleClick(e) {
+    e.stopPropagation()
+    if (saving) return
+    setSaving(true)
+    try {
+      const updated = faq.has_upvoted
+        ? await removeFaqUpvote(faq.id)
+        : await upvoteFaq(faq.id)
+      onChanged(updated)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={saving}
+      title={faq.has_upvoted ? 'Remove like' : 'Like FAQ'}
+      className={`inline-flex items-center gap-1.5 rounded-full border text-xs font-semibold transition-colors disabled:opacity-60 ${
+        compact ? 'px-2.5 py-1' : 'px-3 py-1.5'
+      } ${
+        faq.has_upvoted
+          ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+          : 'border-gray-200 bg-white text-gray-500 hover:border-emerald-300 hover:text-emerald-700'
+      }`}
+    >
+      <svg className="w-3.5 h-3.5" fill={faq.has_upvoted ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 11v9M7 11H4.5A1.5 1.5 0 003 12.5v6A1.5 1.5 0 004.5 20H7m0-9l4.4-7.2A1.5 1.5 0 0114.2 5v4h4.3a1.5 1.5 0 011.47 1.79l-1.2 6A4 4 0 0114.85 20H7" />
+      </svg>
+      {faq.upvote_count ?? 0}
+    </button>
+  )
+}
+
 /* ─── Detail Modal ──────────────────────────────────────────────── */
 
-function FaqDetailModal({ faqId, onClose }) {
+function FaqDetailModal({ faqId, onClose, onChanged }) {
   const [faq, setFaq] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -84,6 +131,10 @@ function FaqDetailModal({ faqId, onClose }) {
                     </svg>
                     {faq.view_count}
                   </span>
+                  <UpvoteButton faq={faq} compact onChanged={(updated) => {
+                    setFaq(updated)
+                    onChanged(updated)
+                  }} />
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900 leading-snug">{faq.question}</h2>
               </>
@@ -222,7 +273,7 @@ function CreateFaqModal({ onClose, onCreated }) {
 
 /* ─── FAQ Card ──────────────────────────────────────────────────── */
 
-function FaqCard({ faq, isAdmin, onClick, onDelete }) {
+function FaqCard({ faq, isAdmin, onClick, onDelete, onChanged }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -271,17 +322,10 @@ function FaqCard({ faq, isAdmin, onClick, onDelete }) {
       )}
 
       {/* card body — clickable */}
-      <div onClick={onClick} className="cursor-pointer">
+      <div onClick={onClick} className="cursor-pointer flex h-full flex-col">
         <div className="flex items-center gap-2 flex-wrap mb-3 pr-16">
           <span className="inline-block bg-violet-100 text-violet-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
             {faq.category}
-          </span>
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            {faq.view_count}
           </span>
         </div>
 
@@ -293,12 +337,22 @@ function FaqCard({ faq, isAdmin, onClick, onDelete }) {
           {faq.answer}
         </p>
 
-        {faq.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {faq.tags.slice(0, 4).map((t) => <Tag key={t} label={t} />)}
-            {faq.tags.length > 4 && <span className="text-xs text-gray-400">+{faq.tags.length - 4}</span>}
+        <div className="mt-auto flex items-end justify-between gap-3 pt-2">
+          <div className="flex min-w-0 flex-wrap gap-1">
+            {(faq.tags ?? []).slice(0, 4).map((t) => <Tag key={t} label={t} />)}
+            {faq.tags?.length > 4 && <span className="text-xs text-gray-400">+{faq.tags.length - 4}</span>}
           </div>
-        )}
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {faq.view_count}
+            </span>
+            <UpvoteButton faq={faq} compact onChanged={onChanged} />
+          </div>
+        </div>
       </div>
     </article>
   )
@@ -364,6 +418,13 @@ export default function FaqPage() {
   }, [debouncedText, debouncedId, activeCategory])
 
   const handleDelete  = useCallback((id) => setFaqs((prev) => prev.filter((f) => f.id !== id)), [])
+  const handleChanged = useCallback((updated) => {
+    setFaqs((prev) => (
+      prev
+        .map((f) => (f.id === updated.id ? updated : f))
+        .sort((a, b) => (b.upvote_count ?? 0) - (a.upvote_count ?? 0))
+    ))
+  }, [])
   const handleCreated = useCallback((faq) => {
     setFaqs((prev) => [faq, ...prev])
     // refresh categories if new one appeared
@@ -471,6 +532,7 @@ export default function FaqPage() {
                 isAdmin={isAdmin}
                 onClick={() => setSelectedId(faq.id)}
                 onDelete={handleDelete}
+                onChanged={handleChanged}
               />
             ))
           )}
@@ -478,7 +540,13 @@ export default function FaqPage() {
       )}
 
       {/* ── Modals ── */}
-      {selectedId && <FaqDetailModal faqId={selectedId} onClose={() => setSelectedId(null)} />}
+      {selectedId && (
+        <FaqDetailModal
+          faqId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onChanged={handleChanged}
+        />
+      )}
       {showCreate  && <CreateFaqModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />}
     </div>
   )

@@ -115,6 +115,11 @@ def create_ticket(
     priority,
     is_public: bool,
 ) -> Ticket:
+    if ticket_repo.get_active_ticket_category(db, category) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Ticket category is not available",
+        )
     return ticket_repo.create_ticket(
         db,
         user_id=user_id,
@@ -151,6 +156,10 @@ def list_public_tickets(
 
 def list_assigned_tickets(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
     return ticket_repo.list_tickets_assigned_to(db, agent_id)
+
+
+def list_staff_visible_tickets(db: Session, category=None) -> list[Ticket]:
+    return ticket_repo.list_staff_visible_tickets(db, category=category)
 
 
 # ---------------------------------------------------------------------------
@@ -264,10 +273,19 @@ def assign_ticket(
     db: Session,
     *,
     ticket: Ticket,
-    agent_id: uuid.UUID,
+    agent_id: uuid.UUID | None,
     agent: object,  # User object – validated by caller
 ) -> Ticket:
     return ticket_repo.assign_ticket(db, ticket, agent_id)
+
+
+def update_category(db: Session, *, ticket: Ticket, category) -> Ticket:
+    if ticket_repo.get_active_ticket_category(db, category) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Ticket category is not available",
+        )
+    return ticket_repo.update_ticket_category(db, ticket, category)
 
 
 # ---------------------------------------------------------------------------

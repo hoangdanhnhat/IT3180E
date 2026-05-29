@@ -22,6 +22,7 @@ def list_faqs(
     q: str | None = None,
     category: str | None = None,
     include_inactive: bool = False,
+    viewer_id: uuid.UUID | None = None,
 ) -> list[FaqItem]:
     """
     Return FAQ items.
@@ -30,24 +31,54 @@ def list_faqs(
     """
     if q and q.strip():
         # Hybrid search always filters active-only and respects category
-        return faq_repo.hybrid_search_faqs(db, q.strip(), category=category)
+        faqs = faq_repo.hybrid_search_faqs(db, q.strip(), category=category)
+    else:
+        faqs = faq_repo.list_faqs(
+            db,
+            category=category,
+            include_inactive=include_inactive,
+        )
 
-    return faq_repo.list_faqs(
+    voted_ids = faq_repo.get_faq_upvotes_for_user(
         db,
-        category=category,
-        include_inactive=include_inactive,
+        faq_ids=[faq.id for faq in faqs],
+        user_id=viewer_id,
     )
+    for faq in faqs:
+        setattr(faq, "has_upvoted", faq.id in voted_ids)
+    return faqs
 
 
 def list_categories(db: Session) -> list[str]:
     return faq_repo.list_categories(db)
 
 
-def get_faq_detail(db: Session, faq_id: uuid.UUID) -> FaqItem:
+def get_faq_detail(
+    db: Session,
+    faq_id: uuid.UUID,
+    *,
+    viewer_id: uuid.UUID | None = None,
+) -> FaqItem:
     """Return FAQ and increment view count."""
     faq = get_faq_or_404(db, faq_id)
     faq = faq_repo.increment_view_count(db, faq)
+    if viewer_id is not None:
+        setattr(
+            faq,
+            "has_upvoted",
+            faq_repo.has_user_upvoted(db, faq_id=faq.id, user_id=viewer_id),
+        )
     return faq
+
+
+def upvote_faq(db: Session, faq_id: uuid.UUID, user_id: uuid.UUID) -> FaqItem:
+    faq = get_faq_or_404(db, faq_id)
+    return faq_repo.upvote_faq(db, faq=faq, user_id=user_id)
+
+
+def remove_faq_upvote(db: Session, faq_id: uuid.UUID, user_id: uuid.UUID) -> FaqItem:
+    faq = get_faq_or_404(db, faq_id)
+    return faq_repo.remove_faq_upvote(db, faq=faq, user_id=user_id)
 
 
 def create_faq(

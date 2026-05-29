@@ -5,6 +5,8 @@ Endpoints
 GET    /faq                     Public      — list active FAQs (with search & category filter)
 GET    /faq/categories          Public      — list distinct categories
 GET    /faq/{id}                Public      — get detail + increment view_count
+POST   /faq/{id}/upvote         User        — upvote an FAQ
+DELETE /faq/{id}/upvote         User        — remove the user's FAQ upvote
 POST   /faq                     Admin       — create a new FAQ item
 PATCH  /faq/{id}                Admin       — partial update an FAQ item
 DELETE /faq/{id}                Admin       — hard delete an FAQ item
@@ -15,7 +17,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import require_admin
+from app.api.dependencies import get_current_user, get_optional_current_user, require_admin
 from app.api.schemas import FaqCreate, FaqOut, FaqUpdate
 from app.core.db import get_db
 from app.services import faq_service
@@ -33,9 +35,16 @@ def list_faqs(
     q: str | None = Query(default=None, description="Full-text keyword search"),
     category: str | None = Query(default=None, description="Filter by category"),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """Return all active FAQ items. Supports keyword search and category filter."""
-    return faq_service.list_faqs(db, q=q, category=category, include_inactive=False)
+    return faq_service.list_faqs(
+        db,
+        q=q,
+        category=category,
+        include_inactive=False,
+        viewer_id=current_user.id if current_user else None,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -53,9 +62,41 @@ def list_categories(db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.get("/{faq_id}", response_model=FaqOut)
-def get_faq(faq_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_faq(
+    faq_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
     """Return FAQ detail and increment its view count."""
-    return faq_service.get_faq_detail(db, faq_id)
+    return faq_service.get_faq_detail(
+        db,
+        faq_id,
+        viewer_id=current_user.id if current_user else None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# User — upvote FAQ
+# ---------------------------------------------------------------------------
+
+@router.post("/{faq_id}/upvote", response_model=FaqOut)
+def upvote_faq(
+    faq_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upvote an FAQ once for the authenticated user."""
+    return faq_service.upvote_faq(db, faq_id, current_user.id)
+
+
+@router.delete("/{faq_id}/upvote", response_model=FaqOut)
+def remove_faq_upvote(
+    faq_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove the authenticated user's FAQ upvote."""
+    return faq_service.remove_faq_upvote(db, faq_id, current_user.id)
 
 
 # ---------------------------------------------------------------------------

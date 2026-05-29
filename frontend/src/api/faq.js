@@ -24,6 +24,14 @@ export function getFaq(id) {
   return client.get(`/faq/${id}`).then((r) => r.data)
 }
 
+export function upvoteFaq(id) {
+  return client.post(`/faq/${id}/upvote`).then((r) => r.data)
+}
+
+export function removeFaqUpvote(id) {
+  return client.delete(`/faq/${id}/upvote`).then((r) => r.data)
+}
+
 /**
  * POST /faq — create (admin only)
  */

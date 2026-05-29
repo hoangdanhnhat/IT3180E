@@ -2,36 +2,36 @@
 
 Endpoints
 ---------
-GET  /agent/tickets             Agent / Admin — list tickets assigned to current agent
-GET  /agent/tickets/{ticket_id} Agent / Admin — get full detail of an assigned ticket
+GET  /agent/tickets             Agent / Admin — list tickets visible to staff
+GET  /agent/tickets/{ticket_id} Agent / Admin — get full ticket detail
 """
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_agent_or_admin
 from app.api.schemas import TicketDetail, TicketOut
 from app.core.db import get_db
-from app.core.exceptions import ForbiddenException
 from app.services import ticket_service
-from app.storage.models import User, UserRole
+from app.storage.models import User
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 # ---------------------------------------------------------------------------
-# Agent — list assigned tickets
+# Agent — list staff-visible tickets
 # ---------------------------------------------------------------------------
 
 @router.get("/tickets", response_model=list[TicketOut])
-def list_assigned_tickets(
+def list_staff_tickets(
+    category: str | None = Query(default=None, description="Category filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_agent_or_admin),
+    _: User = Depends(require_agent_or_admin),
 ):
-    """Return all tickets assigned to the authenticated agent (or all for admins)."""
-    return ticket_service.list_assigned_tickets(db, current_user.id)
+    """Return all tickets visible to staff, optionally filtered by category."""
+    return ticket_service.list_staff_visible_tickets(db, category=category)
 
 
 # ---------------------------------------------------------------------------
@@ -46,15 +46,6 @@ def get_assigned_ticket(
 ):
     """Return full ticket detail.
 
-    Agents may only view tickets assigned to them.
-    Admins may view any ticket.
+    All staff may inspect tickets before choosing whether to follow them.
     """
-    ticket = ticket_service.get_ticket_or_404(db, ticket_id)
-
-    if (
-        current_user.role == UserRole.agent
-        and ticket.assigned_to != current_user.id
-    ):
-        raise ForbiddenException("You can only view tickets assigned to you")
-
-    return ticket
+    return ticket_service.get_ticket_or_404(db, ticket_id)

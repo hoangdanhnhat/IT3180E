@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR, UUID
@@ -28,14 +29,6 @@ class UserRole(str, PyEnum):
     customer = "customer"
     agent = "agent"
     admin = "admin"
-
-
-class TicketCategory(str, PyEnum):
-    billing = "billing"
-    delays = "delays"
-    lost_found = "lost_found"
-    route = "route"
-    other = "other"
 
 
 class TicketPriority(str, PyEnum):
@@ -88,6 +81,9 @@ class User(Base):
     status_changes: Mapped[list["TicketStatusHistory"]] = relationship(
         "TicketStatusHistory", back_populates="changed_by_user"
     )
+    faq_upvotes: Mapped[list["FaqUpvote"]] = relationship(
+        "FaqUpvote", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Ticket(Base):
@@ -105,9 +101,7 @@ class Ticket(Base):
     )
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[TicketCategory] = mapped_column(
-        Enum(TicketCategory, name="ticketcategory"), nullable=False
-    )
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
     priority: Mapped[TicketPriority] = mapped_column(
         Enum(TicketPriority, name="ticketpriority"), nullable=False, default=TicketPriority.normal
     )
@@ -157,6 +151,9 @@ class FaqItem(Base):
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True, default=list)
     view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    upvote_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # Populated and kept up to date by a PostgreSQL trigger (see migration)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
@@ -166,6 +163,47 @@ class FaqItem(Base):
 
     __table_args__ = (
         Index("ix_faq_items_search_vector", "search_vector", postgresql_using="gin"),
+    )
+
+    upvotes: Mapped[list["FaqUpvote"]] = relationship(
+        "FaqUpvote", back_populates="faq", cascade="all, delete-orphan"
+    )
+
+
+class TicketCategoryOption(Base):
+    __tablename__ = "ticket_categories"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class FaqUpvote(Base):
+    __tablename__ = "faq_upvotes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    faq_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("faq_items.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    faq: Mapped["FaqItem"] = relationship("FaqItem", back_populates="upvotes")
+    user: Mapped["User"] = relationship("User", back_populates="faq_upvotes")
+
+    __table_args__ = (
+        UniqueConstraint("faq_id", "user_id", name="uq_faq_upvotes_faq_user"),
+        Index("ix_faq_upvotes_faq_id", "faq_id"),
+        Index("ix_faq_upvotes_user_id", "user_id"),
     )
 
 

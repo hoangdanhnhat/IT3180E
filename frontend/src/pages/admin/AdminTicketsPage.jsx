@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listAllTickets, updateTicketPriority } from '../../api/admin'
+import { listAllTickets, listTicketCategoriesAdmin, updateTicketPriority } from '../../api/admin'
 import { listUsers } from '../../api/admin'
 import { assignTicket } from '../../api/tickets'
 import { StatusBadge, PriorityBadge } from '../../components/ui/Badge'
@@ -22,6 +22,17 @@ export default function AdminTicketsPage() {
     queryKey: ['admin/users'],
     queryFn: listUsers,
   })
+
+  const { data: categories } = useQuery({
+    queryKey: ['admin/ticket-categories'],
+    queryFn: listTicketCategoriesAdmin,
+  })
+
+  const categoryLabels = useMemo(() => {
+    const labels = { ...CATEGORY_LABELS }
+    for (const category of categories ?? []) labels[category.key] = category.label
+    return labels
+  }, [categories])
 
   // Track pending priority and assignee selections per ticket
   const [pendingPriority, setPendingPriority] = useState({})
@@ -140,8 +151,8 @@ export default function AdminTicketsPage() {
           onChange={handleFilterChange(setFilterCategory)}
         >
           <option value="">All Categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>{label}</option>
+          {(categories ?? []).map((cat) => (
+            <option key={cat.key} value={cat.key}>{cat.label}</option>
           ))}
         </select>
         <select
@@ -214,7 +225,7 @@ export default function AdminTicketsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                      {CATEGORY_LABELS[ticket.category] ?? ticket.category}
+                      {categoryLabels[ticket.category] ?? ticket.category}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <StatusBadge status={ticket.status} />

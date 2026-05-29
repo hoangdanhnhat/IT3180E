@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import AdminLayout from './pages/admin/AdminLayout'
 import AdminTicketsPage from './pages/admin/AdminTicketsPage'
 import CreateUserPage from './pages/admin/CreateUserPage'
+import TicketCategoriesPage from './pages/admin/TicketCategoriesPage'
 import UsersPage from './pages/admin/UsersPage'
 import AgentLayout from './pages/agent/AgentLayout'
 import AgentTicketsPage from './pages/agent/AgentTicketsPage'
@@ -98,6 +99,7 @@ export default function App() {
           <Route index element={<Navigate to="users" replace />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="create-user" element={<CreateUserPage />} />
+          <Route path="ticket-categories" element={<TicketCategoriesPage />} />
           <Route path="tickets" element={<AdminTicketsPage />} />
           <Route path="faq" element={<FaqPage />} />
         </Route>

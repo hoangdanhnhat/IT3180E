@@ -2,10 +2,10 @@
 
 import uuid
 
-from sqlalchemy import func, or_, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.storage.models import FaqItem
+from app.storage.models import FaqItem, FaqUpvote
 
 
 # ---------------------------------------------------------------------------
@@ -49,9 +49,10 @@ combined AS (
     FROM bm25 b
     FULL OUTER JOIN fuzzy f ON b.id = f.id
 )
-SELECT id, (bm25_score + fuzzy_score) AS score
+SELECT faq_items.id, (bm25_score + fuzzy_score) AS score
 FROM   combined
-ORDER  BY score DESC
+JOIN   faq_items ON faq_items.id = combined.id
+ORDER  BY faq_items.upvote_count DESC, score DESC, faq_items.created_at DESC
 LIMIT  :limit
 """)
 
@@ -80,8 +81,8 @@ def hybrid_search_faqs(
     if not rows:
         return []
 
-    # Preserve the hybrid-ranked order
-    id_to_score = {row.id: row.score for row in rows}
+    # Preserve the SQL-ranked order
+    id_to_rank = {row.id: idx for idx, row in enumerate(rows)}
     ordered_ids = [row.id for row in rows]
 
     faqs = (
@@ -90,7 +91,7 @@ def hybrid_search_faqs(
         .all()
     )
     # Re-sort to match the SQL order (IN clause doesn't guarantee order)
-    faqs.sort(key=lambda f: id_to_score.get(f.id, 0), reverse=True)
+    faqs.sort(key=lambda f: id_to_rank.get(f.id, len(id_to_rank)))
     return faqs
 
 
@@ -113,7 +114,7 @@ def list_faqs(
     if category:
         query = query.filter(FaqItem.category == category)
 
-    return query.order_by(FaqItem.created_at.desc()).all()
+    return query.order_by(FaqItem.upvote_count.desc(), FaqItem.created_at.desc()).all()
 
 
 def list_categories(db: Session) -> list[str]:
@@ -140,6 +141,63 @@ def increment_view_count(db: Session, faq: FaqItem) -> FaqItem:
     faq.view_count = (faq.view_count or 0) + 1
     db.commit()
     db.refresh(faq)
+    return faq
+
+
+def get_faq_upvotes_for_user(
+    db: Session,
+    *,
+    faq_ids: list[uuid.UUID],
+    user_id: uuid.UUID | None,
+) -> set[uuid.UUID]:
+    if not faq_ids or user_id is None:
+        return set()
+
+    rows = (
+        db.query(FaqUpvote.faq_id)
+        .filter(FaqUpvote.user_id == user_id, FaqUpvote.faq_id.in_(faq_ids))
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def has_user_upvoted(db: Session, *, faq_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    return (
+        db.query(FaqUpvote.id)
+        .filter(FaqUpvote.faq_id == faq_id, FaqUpvote.user_id == user_id)
+        .first()
+        is not None
+    )
+
+
+def upvote_faq(db: Session, *, faq: FaqItem, user_id: uuid.UUID) -> FaqItem:
+    if has_user_upvoted(db, faq_id=faq.id, user_id=user_id):
+        setattr(faq, "has_upvoted", True)
+        return faq
+
+    db.add(FaqUpvote(faq_id=faq.id, user_id=user_id))
+    faq.upvote_count = (faq.upvote_count or 0) + 1
+    db.commit()
+    db.refresh(faq)
+    setattr(faq, "has_upvoted", True)
+    return faq
+
+
+def remove_faq_upvote(db: Session, *, faq: FaqItem, user_id: uuid.UUID) -> FaqItem:
+    vote = (
+        db.query(FaqUpvote)
+        .filter(FaqUpvote.faq_id == faq.id, FaqUpvote.user_id == user_id)
+        .first()
+    )
+    if vote is None:
+        setattr(faq, "has_upvoted", False)
+        return faq
+
+    db.delete(vote)
+    faq.upvote_count = max((faq.upvote_count or 0) - 1, 0)
+    db.commit()
+    db.refresh(faq)
+    setattr(faq, "has_upvoted", False)
     return faq
 
 

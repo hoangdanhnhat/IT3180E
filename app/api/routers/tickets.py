@@ -10,6 +10,8 @@ POST   /tickets/{id}/messages         Customer / Agent — add reply or internal
 POST   /tickets/{id}/attachments      Customer / Agent — upload file attachments
 PATCH  /tickets/{id}/status           Agent      — change ticket status
 PATCH  /tickets/{id}/assign           Agent      — assign ticket to an agent
+PATCH  /tickets/{id}/follow           Agent      — follow/claim ticket as current staff user
+PATCH  /tickets/{id}/category         Agent      — transfer ticket to another category
 """
 
 import os
@@ -33,6 +35,7 @@ from app.api.schemas import (
     PublicTicketDetail,
     PublicTicketOut,
     StatusUpdate,
+    TicketCategoryUpdate,
     TicketCreate,
     TicketDetail,
     TicketOut,
@@ -217,16 +220,13 @@ def download_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Download an attachment. Only the submitter, assigned agent, or admin may access."""
+    """Download an attachment. Only the submitter or staff may access."""
     ticket = ticket_service.get_ticket_or_404(db, ticket_id)
 
-    is_admin = current_user.role == UserRole.admin
-    is_assigned_agent = (
-        current_user.role == UserRole.agent and ticket.assigned_to == current_user.id
-    )
+    is_staff = current_user.role in (UserRole.agent, UserRole.admin)
     is_submitter = ticket.user_id == current_user.id
 
-    if not (is_admin or is_assigned_agent or is_submitter):
+    if not (is_staff or is_submitter):
         raise ForbiddenException("You do not have access to this attachment")
 
     attachment = next((a for a in ticket.attachments if a.id == attachment_id), None)
@@ -396,8 +396,39 @@ def assign_ticket(
     """Assign a ticket to an agent (or re-assign it)."""
     ticket = ticket_service.get_ticket_or_404(db, ticket_id)
 
+    if body.agent_id is None:
+        return ticket_service.assign_ticket(db, ticket=ticket, agent_id=None, agent=None)
+
     agent = user_repo.get_user_by_id(db, body.agent_id)
     if agent is None or agent.role not in (UserRole.agent, UserRole.admin):
         raise NotFoundException("Agent not found or user is not an agent")
 
     return ticket_service.assign_ticket(db, ticket=ticket, agent_id=body.agent_id, agent=agent)
+
+
+@router.patch("/{ticket_id}/follow", response_model=TicketOut)
+def follow_ticket(
+    ticket_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_agent_or_admin),
+):
+    """Follow/claim a ticket as the authenticated staff user."""
+    ticket = ticket_service.get_ticket_or_404(db, ticket_id)
+    return ticket_service.assign_ticket(
+        db,
+        ticket=ticket,
+        agent_id=current_user.id,
+        agent=current_user,
+    )
+
+
+@router.patch("/{ticket_id}/category", response_model=TicketOut)
+def transfer_ticket_category(
+    ticket_id: uuid.UUID,
+    body: TicketCategoryUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_agent_or_admin),
+):
+    """Transfer a ticket to another category."""
+    ticket = ticket_service.get_ticket_or_404(db, ticket_id)
+    return ticket_service.update_category(db, ticket=ticket, category=body.category)

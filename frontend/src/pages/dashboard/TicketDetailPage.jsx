@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { getTicket, addMessage, updateStatus, downloadAttachment, viewAttachment } from '../../api/tickets'
+import {
+  getTicket,
+  addMessage,
+  updateStatus,
+  downloadAttachment,
+  viewAttachment,
+  followTicket,
+  transferTicketCategory,
+} from '../../api/tickets'
 import { useAuthStore } from '../../store/authStore'
 import MessageBubble from '../../components/MessageBubble'
 import { StatusBadge, PriorityBadge } from '../../components/ui/Badge'
@@ -53,6 +61,7 @@ export default function TicketDetailPage() {
     formState: { isSubmitting },
   } = useForm()
   const [msgError, setMsgError] = useState('')
+  const [transferCategory, setTransferCategory] = useState('')
 
   const replyMutation = useMutation({
     mutationFn: ({ content }) => addMessage(id, content, false),
@@ -69,6 +78,29 @@ export default function TicketDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ticket', id] }),
   })
 
+  const followMutation = useMutation({
+    mutationFn: () => followTicket(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ticket', id] })
+      qc.invalidateQueries({ queryKey: ['agent-tickets'] })
+      qc.invalidateQueries({ queryKey: ['admin/tickets'] })
+    },
+  })
+
+  const categoryMutation = useMutation({
+    mutationFn: (category) => transferTicketCategory(id, category),
+    onSuccess: () => {
+      setTransferCategory('')
+      qc.invalidateQueries({ queryKey: ['ticket', id] })
+      qc.invalidateQueries({ queryKey: ['agent-tickets'] })
+      qc.invalidateQueries({ queryKey: ['admin/tickets'] })
+    },
+  })
+
+  useEffect(() => {
+    setTransferCategory('')
+  }, [id])
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -83,12 +115,14 @@ export default function TicketDetailPage() {
     .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
   const canViewAttachments =
-    user?.role === 'admin' ||
+    isAgentOrAdmin ||
     ticket.user_id === user?.id ||
     (user?.role === 'agent' && ticket.assigned_to === user?.id)
 
   const transitionMap = isAgentOrAdmin ? AGENT_TRANSITIONS : CUSTOMER_TRANSITIONS
   const nextStatuses = transitionMap[ticket.status] ?? []
+  const selectedTransferCategory = transferCategory || ticket.category
+  const transferDirty = selectedTransferCategory !== ticket.category
 
   return (
     <div>
@@ -176,6 +210,16 @@ export default function TicketDetailPage() {
                 ...(ticket.submitter
                   ? [{ label: 'Submitted by', value: ticket.submitter.full_name }]
                   : []),
+                ...(isAgentOrAdmin
+                  ? [{
+                      label: 'Staff follow',
+                      value: ticket.assigned_to === user?.id
+                        ? 'You'
+                        : ticket.assigned_to
+                          ? 'Another staff member'
+                          : 'Not followed',
+                    }]
+                  : []),
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between items-center gap-2">
                   <dt className="text-gray-500 shrink-0">{label}</dt>
@@ -184,6 +228,43 @@ export default function TicketDetailPage() {
               ))}
             </dl>
           </div>
+
+          {isAgentOrAdmin && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900">Staff Actions</h3>
+              <Button
+                className="w-full justify-center"
+                variant={ticket.assigned_to === user?.id ? 'outline' : 'primary'}
+                loading={followMutation.isPending}
+                disabled={ticket.assigned_to === user?.id}
+                onClick={() => followMutation.mutate()}
+              >
+                {ticket.assigned_to === user?.id ? 'Following' : 'Follow Ticket'}
+              </Button>
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-500">Transfer category</label>
+                <div className="flex gap-2">
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={selectedTransferCategory}
+                    onChange={(e) => setTransferCategory(e.target.value)}
+                  >
+                    {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+                      <option key={val} value={val}>{label}</option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="outline"
+                    loading={categoryMutation.isPending}
+                    disabled={!transferDirty}
+                    onClick={() => categoryMutation.mutate(selectedTransferCategory)}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {(isAgentOrAdmin ? isAssignedAgent : true) && nextStatuses.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">

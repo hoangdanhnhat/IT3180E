@@ -139,7 +139,11 @@ class StatusUpdate(BaseModel):
 
 
 class AssignUpdate(BaseModel):
-    agent_id: uuid.UUID
+    agent_id: uuid.UUID | None = None
+
+
+class TicketCategoryUpdate(BaseModel):
+    category: TicketCategory
 
 
 class PriorityUpdate(BaseModel):
@@ -258,6 +262,8 @@ class FaqOut(BaseModel):
     category: str
     tags: list[str]
     view_count: int
+    upvote_count: int
+    has_upvoted: bool = False
     is_active: bool
     created_at: datetime
 

@@ -155,6 +155,21 @@ def list_tickets_assigned_to(db: Session, agent_id: uuid.UUID) -> list[Ticket]:
     )
 
 
+def list_staff_visible_tickets(
+    db: Session,
+    *,
+    category: TicketCategory | None = None,
+) -> list[Ticket]:
+    """Return tickets visible to staff, optionally scoped by category."""
+    query = db.query(Ticket).options(
+        joinedload(Ticket.submitter),
+        joinedload(Ticket.assignee),
+    )
+    if category:
+        query = query.filter(Ticket.category == category)
+    return query.order_by(Ticket.updated_at.desc()).all()
+
+
 def list_public_tickets(
     db: Session,
     q: str | None = None,
@@ -286,9 +301,20 @@ def create_attachment(
 def assign_ticket(
     db: Session,
     ticket: Ticket,
-    agent_id: uuid.UUID,
+    agent_id: uuid.UUID | None,
 ) -> Ticket:
     ticket.assigned_to = agent_id
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+def update_ticket_category(
+    db: Session,
+    ticket: Ticket,
+    category: TicketCategory,
+) -> Ticket:
+    ticket.category = category
     db.commit()
     db.refresh(ticket)
     return ticket

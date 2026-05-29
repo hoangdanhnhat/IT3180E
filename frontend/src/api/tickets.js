@@ -55,6 +55,12 @@ export const assignTicket = (id, agentId) =>
     .patch(`/tickets/${id}/assign`, { agent_id: agentId })
     .then((r) => r.data)
 
+export const followTicket = (id) =>
+  client.patch(`/tickets/${id}/follow`).then((r) => r.data)
+
+export const transferTicketCategory = (id, category) =>
+  client.patch(`/tickets/${id}/category`, { category }).then((r) => r.data)
+
 export const getPublicTickets = (q = '', category = '') => {
   const params = {}
   if (q) params.q = q
@@ -80,5 +86,8 @@ export const downloadPublicAttachment = async (ticketNumber, attachmentId, filen
   window.URL.revokeObjectURL(url)
 }
 
-export const listAssignedTickets = () =>
-  client.get('/agent/tickets').then((r) => r.data)
+export const listAssignedTickets = (category = '') => {
+  const params = {}
+  if (category) params.category = category
+  return client.get('/agent/tickets', { params }).then((r) => r.data)
+}

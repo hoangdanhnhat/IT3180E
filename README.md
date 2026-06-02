@@ -92,11 +92,11 @@ ADMIN_EMAIL=admin@ufms.hehe
 ADMIN_PASSWORD=Admin1234!
 ADMIN_NAME=System Administrator
 
-SMTP_HOST=smtp.sendgrid.net
+SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASSWORD=
-EMAIL_FROM=no-reply@ufms.example.com
+SMTP_USER=your.gmail@gmail.com
+SMTP_PASSWORD=16-digits-password
+EMAIL_FROM=your.gmail@gmail.com
 ```
 
 Important variables:

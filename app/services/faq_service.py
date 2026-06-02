@@ -100,6 +100,10 @@ def create_faq(
     )
 
 
+def import_faqs(db: Session, items: list[dict]) -> list[FaqItem]:
+    return faq_repo.create_faqs(db, items)
+
+
 def update_faq(
     db: Session,
     faq_id: uuid.UUID,

@@ -40,6 +40,13 @@ export function createFaq(body) {
 }
 
 /**
+ * POST /faq/import — bulk import FAQs (admin only)
+ */
+export function importFaqs(items) {
+  return client.post('/faq/import', { items }).then((r) => r.data)
+}
+
+/**
  * DELETE /faq/:id — hard delete (admin only)
  */
 export function deleteFaq(id) {

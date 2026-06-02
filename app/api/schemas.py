@@ -308,8 +308,17 @@ class FaqCreate(BaseModel):
     question: str = Field(..., max_length=500)
     answer: str
     category: str = Field(..., max_length=100)
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     is_active: bool = True
+
+
+class FaqImportRequest(BaseModel):
+    items: list[FaqCreate] = Field(..., min_length=1, max_length=500)
+
+
+class FaqImportResponse(BaseModel):
+    imported_count: int
+    items: list[FaqOut]
 
 
 class FaqUpdate(BaseModel):

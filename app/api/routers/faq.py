@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_optional_current_user, require_admin
-from app.api.schemas import FaqCreate, FaqOut, FaqUpdate
+from app.api.schemas import FaqCreate, FaqImportRequest, FaqImportResponse, FaqOut, FaqUpdate
 from app.core.db import get_db
 from app.services import faq_service
 from app.storage.models import User
@@ -55,6 +55,22 @@ def list_faqs(
 def list_categories(db: Session = Depends(get_db)):
     """Return a sorted list of distinct FAQ categories."""
     return faq_service.list_categories(db)
+
+
+# ---------------------------------------------------------------------------
+# Admin — import FAQs
+# ---------------------------------------------------------------------------
+
+@router.post("/import", response_model=FaqImportResponse, status_code=201)
+def import_faqs(
+    body: FaqImportRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Bulk import FAQ items from a validated JSON payload (admin only)."""
+    items = [item.model_dump() for item in body.items]
+    faqs = faq_service.import_faqs(db, items)
+    return {"imported_count": len(faqs), "items": faqs}
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   listFaqs,
   listFaqCategories,
   getFaq,
   createFaq,
+  importFaqs,
   deleteFaq,
   upvoteFaq,
   removeFaqUpvote,
@@ -44,6 +46,52 @@ function CategoryChip({ label, active, onClick }) {
     >
       {label}
     </button>
+  )
+}
+
+function SelfServiceNotice() {
+  return (
+    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+      <div className="flex gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-amber-900">We encourage self-service before submitting a ticket.</p>
+          <p className="mt-1 text-sm text-amber-800">
+            Search the FAQ first. If you cannot find a useful answer, continue to public tickets to check whether a similar issue has already been resolved.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PublicTicketSearchCta({ query, hasResults }) {
+  const trimmedQuery = query.trim()
+  const href = trimmedQuery ? `/public?q=${encodeURIComponent(trimmedQuery)}` : '/public'
+
+  return (
+    <div className="mb-5 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-indigo-950">
+            {hasResults ? 'Not the answer you needed?' : 'No FAQ answer found?'}
+          </p>
+          <p className="mt-0.5 text-sm text-indigo-800">
+            Search public resolved tickets before creating a new support ticket.
+          </p>
+        </div>
+        <Link
+          to={href}
+          className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+        >
+          Search public tickets
+        </Link>
+      </div>
+    </div>
   )
 }
 
@@ -169,6 +217,96 @@ function FaqDetailModal({ faqId, onClose, onChanged }) {
 /* ─── Create FAQ Modal (admin) ──────────────────────────────────── */
 
 const EMPTY_FORM = { question: '', answer: '', category: '', tags: '', is_active: true }
+
+function normalizeImportedFaqs(parsed) {
+  const items = Array.isArray(parsed) ? parsed : parsed?.faqs ?? parsed?.items
+  if (!Array.isArray(items)) {
+    throw new Error('JSON must be an array, or an object with a faqs/items array.')
+  }
+  if (items.length === 0) {
+    throw new Error('JSON file must contain at least one FAQ.')
+  }
+
+  return items.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new Error(`Item ${index + 1} must be an object.`)
+    }
+
+    const question = typeof item.question === 'string' ? item.question.trim() : ''
+    const answer = typeof item.answer === 'string' ? item.answer.trim() : ''
+    const category = typeof item.category === 'string' ? item.category.trim() : ''
+    if (!question || !answer || !category) {
+      throw new Error(`Item ${index + 1} requires question, answer, and category.`)
+    }
+    if (question.length > 500) {
+      throw new Error(`Item ${index + 1} question must be 500 characters or fewer.`)
+    }
+    if (category.length > 100) {
+      throw new Error(`Item ${index + 1} category must be 100 characters or fewer.`)
+    }
+
+    let tags = []
+    if (Array.isArray(item.tags)) {
+      tags = item.tags.map((tag) => String(tag).trim()).filter(Boolean)
+    } else if (typeof item.tags === 'string') {
+      tags = item.tags.split(',').map((tag) => tag.trim()).filter(Boolean)
+    }
+
+    return {
+      question,
+      answer,
+      category,
+      tags,
+      is_active: typeof item.is_active === 'boolean' ? item.is_active : true,
+    }
+  })
+}
+
+function ImportFaqButton({ onImported }) {
+  const [importing, setImporting] = useState(false)
+  const [message, setMessage] = useState(null)
+
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setImporting(true)
+    setMessage(null)
+    try {
+      const parsed = JSON.parse(await file.text())
+      const items = normalizeImportedFaqs(parsed)
+      const result = await importFaqs(items)
+      setMessage({ type: 'success', text: `Imported ${result.imported_count} FAQ${result.imported_count === 1 ? '' : 's'}.` })
+      onImported(result.items)
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.detail || err.message || 'Failed to import FAQs.' })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <label className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-lg transition-colors shadow-sm flex-shrink-0 ${
+        importing
+          ? 'text-gray-400 bg-gray-50 border-gray-200 cursor-not-allowed'
+          : 'text-indigo-700 bg-white border-indigo-200 hover:bg-indigo-50 cursor-pointer'
+      }`}>
+        <input type="file" accept="application/json,.json" onChange={handleFileChange} disabled={importing} className="hidden" />
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+        </svg>
+        {importing ? 'Importing...' : 'Import JSON'}
+      </label>
+      {message && (
+        <p className={`max-w-xs text-right text-xs ${message.type === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+          {message.text}
+        </p>
+      )}
+    </div>
+  )
+}
 
 function CreateFaqModal({ onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM)
@@ -388,6 +526,7 @@ export default function FaqPage() {
   const [activeCategory, setActiveCategory] = useState('')
   const [selectedId, setSelectedId]   = useState(null)
   const [showCreate, setShowCreate]   = useState(false)
+  const [reloadKey, setReloadKey]     = useState(0)
 
   const debouncedText = useDebounce(searchText, 350)
   const debouncedId   = useDebounce(searchId,   300)
@@ -415,7 +554,7 @@ export default function FaqPage() {
       })
       .catch(() => setError('Failed to load FAQs. Please try again.'))
       .finally(() => setLoading(false))
-  }, [debouncedText, debouncedId, activeCategory])
+  }, [debouncedText, debouncedId, activeCategory, reloadKey])
 
   const handleDelete  = useCallback((id) => setFaqs((prev) => prev.filter((f) => f.id !== id)), [])
   const handleChanged = useCallback((updated) => {
@@ -430,11 +569,18 @@ export default function FaqPage() {
     // refresh categories if new one appeared
     listFaqCategories().then(setCategories).catch(() => {})
   }, [])
+  const handleImported = useCallback(() => {
+    setReloadKey((key) => key + 1)
+    listFaqCategories().then(setCategories).catch(() => {})
+  }, [])
 
   const hasQuery = debouncedText.trim() || debouncedId.trim() || activeCategory
+  const publicTicketQuery = debouncedText.trim()
 
   return (
     <div>
+      <SelfServiceNotice />
+
       {/* ── Header row ── */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
@@ -442,17 +588,20 @@ export default function FaqPage() {
           <p className="text-sm text-gray-500 mt-1">Search by keyword, ID, or browse by category.</p>
         </div>
         {isAdmin && (
-          <button
-            id="faq-create-btn"
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600
-                       rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm flex-shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Create FAQ
-          </button>
+          <div className="flex flex-col sm:flex-row items-end gap-3 flex-shrink-0">
+            <ImportFaqButton onImported={handleImported} />
+            <button
+              id="faq-create-btn"
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600
+                         rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm flex-shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Create FAQ
+            </button>
+          </div>
         )}
       </div>
 
@@ -510,6 +659,10 @@ export default function FaqPage() {
         <p className="text-xs text-gray-400 mb-4">
           {faqs.length} result{faqs.length !== 1 ? 's' : ''}{hasQuery ? ' for current filters' : ''}
         </p>
+      )}
+
+      {!loading && !error && hasQuery && (
+        <PublicTicketSearchCta query={publicTicketQuery} hasResults={faqs.length > 0} />
       )}
 
       {/* ── Error ── */}

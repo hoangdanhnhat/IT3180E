@@ -1,0 +1,212 @@
+[
+  {
+    "question": "How can I check the status of my bus or train?",
+    "answer": "Use the trip tracking page or contact customer support with your route number, departure time, and boarding location. Status updates may include delays, cancellations, and estimated arrival times.",
+    "category": "Trip Status",
+    "tags": ["status", "delay", "tracking"],
+    "is_active": true
+  },
+  {
+    "question": "What should I do if my bus or train is delayed?",
+    "answer": "Check the latest service update and stay near the boarding area unless instructed otherwise. If the delay affects your connection, contact support as soon as possible with your booking details.",
+    "category": "Trip Status",
+    "tags": ["delay", "connection", "service update"],
+    "is_active": true
+  },
+  {
+    "question": "How will I know if my trip is cancelled?",
+    "answer": "Cancellation notices are usually sent by email, SMS, app notification, or posted on the service status page. You can also contact support with your ticket or booking number to confirm.",
+    "category": "Trip Status",
+    "tags": ["cancellation", "notification", "booking"],
+    "is_active": true
+  },
+  {
+    "question": "Can I change my travel date or departure time?",
+    "answer": "Changes depend on your ticket type, route, and seat availability. Some tickets can be changed online before departure, while others require customer support assistance or may not be changeable.",
+    "category": "Tickets and Booking",
+    "tags": ["change ticket", "reschedule", "booking"],
+    "is_active": true
+  },
+  {
+    "question": "Can I cancel my ticket and get a refund?",
+    "answer": "Refund eligibility depends on the fare rules, cancellation time, and payment method. Review the refund policy for your ticket type or contact support with your booking number.",
+    "category": "Refunds",
+    "tags": ["refund", "cancel", "ticket"],
+    "is_active": true
+  },
+  {
+    "question": "How long does a refund take?",
+    "answer": "Refund processing time depends on the original payment method and bank processing rules. Card and digital wallet refunds may take several business days after approval.",
+    "category": "Refunds",
+    "tags": ["refund", "processing time", "payment"],
+    "is_active": true
+  },
+  {
+    "question": "Why was my refund amount lower than the ticket price?",
+    "answer": "Some fares include cancellation fees, service fees, or non-refundable portions. The final refund amount is calculated based on the ticket rules and when the cancellation was made.",
+    "category": "Refunds",
+    "tags": ["refund", "fee", "fare rules"],
+    "is_active": true
+  },
+  {
+    "question": "What payment methods are accepted?",
+    "answer": "Accepted payment methods may include credit cards, debit cards, digital wallets, bank transfer, or cash at selected service points. Available options depend on your booking channel and location.",
+    "category": "Payments",
+    "tags": ["payment", "card", "wallet"],
+    "is_active": true
+  },
+  {
+    "question": "What should I do if my payment failed?",
+    "answer": "Check that your payment details are correct, your account has sufficient funds, and your bank has not blocked the transaction. If you were charged but did not receive a ticket, contact support with the payment reference.",
+    "category": "Payments",
+    "tags": ["payment failed", "charged", "booking"],
+    "is_active": true
+  },
+  {
+    "question": "Can I get an invoice or receipt for my trip?",
+    "answer": "Receipts are usually available after payment by email, account history, or customer support request. Provide your booking number and travel date if you need a copy.",
+    "category": "Payments",
+    "tags": ["receipt", "invoice", "payment"],
+    "is_active": true
+  },
+  {
+    "question": "How much luggage can I bring?",
+    "answer": "Luggage allowance depends on the service type and route. Most trips allow a limited number of checked bags and one small carry-on item, but size and weight limits may apply.",
+    "category": "Luggage",
+    "tags": ["luggage", "baggage", "allowance"],
+    "is_active": true
+  },
+  {
+    "question": "Can I bring oversized luggage or sports equipment?",
+    "answer": "Oversized items such as bicycles, skis, surfboards, or large instruments may require advance approval, extra fees, or special storage space. Contact support before traveling.",
+    "category": "Luggage",
+    "tags": ["oversized luggage", "sports equipment", "bicycle"],
+    "is_active": true
+  },
+  {
+    "question": "What should I do if my luggage is lost?",
+    "answer": "Report lost luggage as soon as possible with your ticket number, trip details, bag description, and contact information. Keep any baggage tags or receipts until the case is resolved.",
+    "category": "Luggage",
+    "tags": ["lost luggage", "baggage", "claim"],
+    "is_active": true
+  },
+  {
+    "question": "Can I travel with a pet?",
+    "answer": "Pet rules vary by route and vehicle type. Small pets may be allowed in carriers on some services, while service animals are handled under accessibility policies. Check the pet policy before booking.",
+    "category": "Travel Rules",
+    "tags": ["pet", "service animal", "carrier"],
+    "is_active": true
+  },
+  {
+    "question": "Are children allowed to travel alone?",
+    "answer": "Unaccompanied minor rules depend on the child's age, route, and service type. Some trips require an adult companion, while others may allow minors with special documentation.",
+    "category": "Travel Rules",
+    "tags": ["children", "minor", "travel rules"],
+    "is_active": true
+  },
+  {
+    "question": "Do I need an ID to board?",
+    "answer": "Identification requirements depend on the route, ticket type, and local regulations. Bring a valid ID that matches the passenger name on the booking whenever possible.",
+    "category": "Boarding",
+    "tags": ["id", "boarding", "passenger"],
+    "is_active": true
+  },
+  {
+    "question": "When should I arrive before departure?",
+    "answer": "Arrive early enough to find the boarding area, verify your trip, and load luggage. For intercity services, arriving at least 15 to 30 minutes before departure is commonly recommended.",
+    "category": "Boarding",
+    "tags": ["arrival time", "boarding", "departure"],
+    "is_active": true
+  },
+  {
+    "question": "What happens if I miss my bus or train?",
+    "answer": "Missed trip rules depend on your ticket type. Some tickets may be rebooked for a fee or subject to availability, while others expire after the scheduled departure.",
+    "category": "Boarding",
+    "tags": ["missed trip", "rebook", "departure"],
+    "is_active": true
+  },
+  {
+    "question": "Can I choose or change my seat?",
+    "answer": "Seat selection depends on the service and ticket type. If seat selection is available, you may be able to choose or change your seat before departure, subject to availability.",
+    "category": "Seating",
+    "tags": ["seat", "seat selection", "availability"],
+    "is_active": true
+  },
+  {
+    "question": "Are accessible seats or wheelchair spaces available?",
+    "answer": "Accessible seating and wheelchair spaces may be available on selected services. Request assistance in advance so staff can confirm availability and prepare boarding support.",
+    "category": "Accessibility",
+    "tags": ["accessibility", "wheelchair", "assistance"],
+    "is_active": true
+  },
+  {
+    "question": "How do I request assistance for boarding?",
+    "answer": "Contact customer support before your trip with your booking details and the type of assistance needed. Early notice helps staff arrange boarding, seating, and transfer support.",
+    "category": "Accessibility",
+    "tags": ["assistance", "boarding", "accessibility"],
+    "is_active": true
+  },
+  {
+    "question": "Are there discounts for students, seniors, or children?",
+    "answer": "Discounts vary by route, ticket type, and local program. If a discounted fare is available, you may need valid proof such as a student ID, senior card, or age verification.",
+    "category": "Fares and Discounts",
+    "tags": ["discount", "student", "senior"],
+    "is_active": true
+  },
+  {
+    "question": "Why did the fare change before I completed booking?",
+    "answer": "Fares can change based on availability, demand, booking time, or promotional rules. A price is usually confirmed only after payment is completed.",
+    "category": "Fares and Discounts",
+    "tags": ["fare", "price", "booking"],
+    "is_active": true
+  },
+  {
+    "question": "Can I use the same ticket for a different route?",
+    "answer": "Most tickets are valid only for the route, date, time, and passenger shown on the booking. Contact support if you need to change routes before departure.",
+    "category": "Tickets and Booking",
+    "tags": ["route", "ticket", "change"],
+    "is_active": true
+  },
+  {
+    "question": "What should I do if there is a problem with my driver or staff member?",
+    "answer": "Report the issue with the trip date, route, vehicle number if available, location, and a clear description of what happened. Customer support will review the complaint.",
+    "category": "Customer Service",
+    "tags": ["complaint", "staff", "driver"],
+    "is_active": true
+  },
+  {
+    "question": "How do I report unsafe driving or a safety concern?",
+    "answer": "If there is immediate danger, contact local emergency services first. For non-emergency safety reports, contact support with the route, time, vehicle details, and description of the concern.",
+    "category": "Safety",
+    "tags": ["safety", "unsafe driving", "report"],
+    "is_active": true
+  },
+  {
+    "question": "What should I do if I left something on the vehicle?",
+    "answer": "Report the lost item as soon as possible with your trip details, seat number if known, item description, and contact information. Found items are handled according to the lost property policy.",
+    "category": "Lost and Found",
+    "tags": ["lost item", "lost and found", "vehicle"],
+    "is_active": true
+  },
+  {
+    "question": "How long are lost items kept?",
+    "answer": "Lost property holding periods depend on company policy and local rules. Unclaimed items may be donated, disposed of, or transferred after the holding period ends.",
+    "category": "Lost and Found",
+    "tags": ["lost property", "holding period", "claim"],
+    "is_active": true
+  },
+  {
+    "question": "Can I bring food or drinks on board?",
+    "answer": "Food and drink rules depend on the service. Light snacks and covered drinks may be allowed, but messy food, alcohol, or strong-smelling items may be restricted.",
+    "category": "Travel Rules",
+    "tags": ["food", "drink", "on board"],
+    "is_active": true
+  },
+  {
+    "question": "Is Wi-Fi or charging available on board?",
+    "answer": "Wi-Fi and charging availability depends on the vehicle and route. These amenities are not guaranteed unless specifically listed for your service.",
+    "category": "On Board",
+    "tags": ["wifi", "charging", "amenities"],
+    "is_active": true
+  }
+]

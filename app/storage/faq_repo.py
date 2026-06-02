@@ -227,6 +227,24 @@ def create_faq(
     return faq
 
 
+def create_faqs(db: Session, items: list[dict]) -> list[FaqItem]:
+    faqs = [
+        FaqItem(
+            question=item["question"],
+            answer=item["answer"],
+            category=item["category"],
+            tags=item.get("tags") or [],
+            is_active=item.get("is_active", True),
+        )
+        for item in items
+    ]
+    db.add_all(faqs)
+    db.commit()
+    for faq in faqs:
+        db.refresh(faq)
+    return faqs
+
+
 # ---------------------------------------------------------------------------
 # Update
 # ---------------------------------------------------------------------------

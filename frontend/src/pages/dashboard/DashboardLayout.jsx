@@ -5,7 +5,6 @@ import { logout as logoutApi } from '../../api/auth'
 const TABS = [
   { to: '/dashboard', label: 'Overview', end: true },
   { to: '/dashboard/my-tickets', label: 'My Tickets' },
-  { to: '/dashboard/new-ticket', label: 'New Ticket' },
   { to: '/dashboard/faq', label: 'FAQ' },
   { to: '/public', label: 'Public Tickets', external: true },
 ]

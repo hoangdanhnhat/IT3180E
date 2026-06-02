@@ -31,7 +31,7 @@ export default function LoginPage() {
       const me = await getMe()
       login(tokens, me)
       navigate(
-        me.role === 'admin' ? '/admin/users' : me.role === 'agent' ? '/agent/tickets' : '/dashboard',
+        me.role === 'admin' ? '/admin/faq' : me.role === 'agent' ? '/agent/faq' : '/dashboard/faq',
         { replace: true },
       )
     } catch (err) {

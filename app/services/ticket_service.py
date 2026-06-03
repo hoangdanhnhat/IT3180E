@@ -150,8 +150,51 @@ def list_public_tickets(
     db: Session,
     q: str | None = None,
     category=None,
+    viewer_id: uuid.UUID | None = None,
 ) -> list[Ticket]:
-    return ticket_repo.list_public_tickets(db, q, category)
+    tickets = ticket_repo.list_public_tickets(db, q, category)
+    voted_ids = ticket_repo.get_ticket_upvotes_for_user(
+        db,
+        ticket_ids=[ticket.id for ticket in tickets],
+        user_id=viewer_id,
+    )
+    for ticket in tickets:
+        setattr(ticket, "has_upvoted", ticket.id in voted_ids)
+    return tickets
+
+
+def get_public_ticket_by_number(
+    db: Session,
+    ticket_number: str,
+    *,
+    viewer_id: uuid.UUID | None = None,
+) -> Ticket | None:
+    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    if ticket is not None:
+        has_upvoted = (
+            viewer_id is not None
+            and ticket_repo.has_user_upvoted_ticket(
+                db,
+                ticket_id=ticket.id,
+                user_id=viewer_id,
+            )
+        )
+        setattr(ticket, "has_upvoted", has_upvoted)
+    return ticket
+
+
+def upvote_public_ticket(db: Session, ticket_number: str, user_id: uuid.UUID) -> Ticket:
+    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    return ticket_repo.upvote_public_ticket(db, ticket=ticket, user_id=user_id)
+
+
+def remove_public_ticket_upvote(db: Session, ticket_number: str, user_id: uuid.UUID) -> Ticket:
+    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    return ticket_repo.remove_public_ticket_upvote(db, ticket=ticket, user_id=user_id)
 
 
 def list_assigned_tickets(db: Session, agent_id: uuid.UUID) -> list[Ticket]:

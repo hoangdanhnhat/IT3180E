@@ -87,6 +87,7 @@ CREATE TABLE tickets (
     priority        ticketpriority  NOT NULL DEFAULT 'normal',
     status          ticketstatus    NOT NULL DEFAULT 'open',
     is_public       BOOLEAN         NOT NULL DEFAULT FALSE,
+    public_upvote_count INTEGER     NOT NULL DEFAULT 0,
     search_vector   TSVECTOR,
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
@@ -145,6 +146,27 @@ CREATE TABLE faq_upvotes (
 
 CREATE INDEX ix_faq_upvotes_faq_id  ON faq_upvotes (faq_id);
 CREATE INDEX ix_faq_upvotes_user_id ON faq_upvotes (user_id);
+
+-- =============================================================================
+-- TABLE: ticket_upvotes
+-- =============================================================================
+
+CREATE TABLE ticket_upvotes (
+    id          UUID        NOT NULL DEFAULT gen_random_uuid(),
+    ticket_id   UUID        NOT NULL,
+    user_id     UUID        NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT pk_ticket_upvotes PRIMARY KEY (id),
+    CONSTRAINT uq_ticket_upvotes_ticket_user UNIQUE (ticket_id, user_id),
+    CONSTRAINT fk_ticket_upvotes_ticket_id
+        FOREIGN KEY (ticket_id) REFERENCES tickets (id) ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_upvotes_user_id
+        FOREIGN KEY (user_id)   REFERENCES users   (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_ticket_upvotes_ticket_id ON ticket_upvotes (ticket_id);
+CREATE INDEX ix_ticket_upvotes_user_id   ON ticket_upvotes (user_id);
 
 -- =============================================================================
 -- TABLE: ticket_messages

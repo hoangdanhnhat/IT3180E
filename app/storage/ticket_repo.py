@@ -15,6 +15,7 @@ from app.storage.models import (
     TicketPriority,
     TicketStatus,
     TicketStatusHistory,
+    TicketUpvote,
     User,
 )
 
@@ -261,7 +262,64 @@ def list_public_tickets(
         )
     if category:
         query = query.filter(Ticket.category == category)
-    return query.order_by(Ticket.created_at.desc()).all()
+    return query.order_by(Ticket.public_upvote_count.desc(), Ticket.created_at.desc()).all()
+
+
+def get_ticket_upvotes_for_user(
+    db: Session,
+    *,
+    ticket_ids: list[uuid.UUID],
+    user_id: uuid.UUID | None,
+) -> set[uuid.UUID]:
+    if not ticket_ids or user_id is None:
+        return set()
+
+    rows = (
+        db.query(TicketUpvote.ticket_id)
+        .filter(TicketUpvote.user_id == user_id, TicketUpvote.ticket_id.in_(ticket_ids))
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def has_user_upvoted_ticket(db: Session, *, ticket_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    return (
+        db.query(TicketUpvote.id)
+        .filter(TicketUpvote.ticket_id == ticket_id, TicketUpvote.user_id == user_id)
+        .first()
+        is not None
+    )
+
+
+def upvote_public_ticket(db: Session, *, ticket: Ticket, user_id: uuid.UUID) -> Ticket:
+    if has_user_upvoted_ticket(db, ticket_id=ticket.id, user_id=user_id):
+        setattr(ticket, "has_upvoted", True)
+        return ticket
+
+    db.add(TicketUpvote(ticket_id=ticket.id, user_id=user_id))
+    ticket.public_upvote_count = (ticket.public_upvote_count or 0) + 1
+    db.commit()
+    db.refresh(ticket)
+    setattr(ticket, "has_upvoted", True)
+    return ticket
+
+
+def remove_public_ticket_upvote(db: Session, *, ticket: Ticket, user_id: uuid.UUID) -> Ticket:
+    vote = (
+        db.query(TicketUpvote)
+        .filter(TicketUpvote.ticket_id == ticket.id, TicketUpvote.user_id == user_id)
+        .first()
+    )
+    if vote is None:
+        setattr(ticket, "has_upvoted", False)
+        return ticket
+
+    db.delete(vote)
+    ticket.public_upvote_count = max((ticket.public_upvote_count or 0) - 1, 0)
+    db.commit()
+    db.refresh(ticket)
+    setattr(ticket, "has_upvoted", False)
+    return ticket
 
 
 # ---------------------------------------------------------------------------

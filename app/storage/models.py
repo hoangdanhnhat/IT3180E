@@ -84,6 +84,9 @@ class User(Base):
     faq_upvotes: Mapped[list["FaqUpvote"]] = relationship(
         "FaqUpvote", back_populates="user", cascade="all, delete-orphan"
     )
+    ticket_upvotes: Mapped[list["TicketUpvote"]] = relationship(
+        "TicketUpvote", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Ticket(Base):
@@ -109,6 +112,9 @@ class Ticket(Base):
         Enum(TicketStatus, name="ticketstatus"), nullable=False, default=TicketStatus.open
     )
     is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    public_upvote_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     # Populated and kept up to date by a PostgreSQL trigger (see migration)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -133,6 +139,9 @@ class Ticket(Base):
     )
     status_history: Mapped[list["TicketStatusHistory"]] = relationship(
         "TicketStatusHistory", back_populates="ticket", cascade="all, delete-orphan"
+    )
+    upvotes: Mapped[list["TicketUpvote"]] = relationship(
+        "TicketUpvote", back_populates="ticket", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -178,6 +187,32 @@ class TicketCategoryOption(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class TicketUpvote(Base):
+    __tablename__ = "ticket_upvotes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    ticket_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    ticket: Mapped["Ticket"] = relationship("Ticket", back_populates="upvotes")
+    user: Mapped["User"] = relationship("User", back_populates="ticket_upvotes")
+
+    __table_args__ = (
+        UniqueConstraint("ticket_id", "user_id", name="uq_ticket_upvotes_ticket_user"),
+        Index("ix_ticket_upvotes_ticket_id", "ticket_id"),
+        Index("ix_ticket_upvotes_user_id", "user_id"),
     )
 
 

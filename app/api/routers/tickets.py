@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
     get_current_user,
+    get_optional_current_user,
     require_agent_or_admin,
 )
 from app.api.schemas import (
@@ -66,9 +67,15 @@ def list_public_tickets(
     q: str | None = Query(default=None, description="Keyword filter"),
     category: str | None = Query(default=None, description="Category filter"),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ):
     """Return resolved public tickets. Optionally filter by keyword and/or category."""
-    return ticket_service.list_public_tickets(db, q, category)
+    return ticket_service.list_public_tickets(
+        db,
+        q,
+        category,
+        viewer_id=current_user.id if current_user else None,
+    )
 
 
 @router.get("/categories", response_model=list[TicketCategoryOut])
@@ -77,10 +84,38 @@ def list_ticket_categories(db: Session = Depends(get_db)):
     return ticket_repo.list_ticket_categories(db)
 
 
+@router.post("/public/{ticket_number}/upvote", response_model=PublicTicketOut)
+def upvote_public_ticket(
+    ticket_number: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mark a public ticket as helpful for the authenticated user."""
+    return ticket_service.upvote_public_ticket(db, ticket_number, current_user.id)
+
+
+@router.delete("/public/{ticket_number}/upvote", response_model=PublicTicketOut)
+def remove_public_ticket_upvote(
+    ticket_number: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove the authenticated user's helpful vote from a public ticket."""
+    return ticket_service.remove_public_ticket_upvote(db, ticket_number, current_user.id)
+
+
 @router.get("/public/{ticket_number}", response_model=PublicTicketDetail)
-def get_public_ticket(ticket_number: str, db: Session = Depends(get_db)):
+def get_public_ticket(
+    ticket_number: str,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
     """Return detail of a single public ticket including its non-internal messages."""
-    ticket = ticket_repo.get_public_ticket_by_number(db, ticket_number)
+    ticket = ticket_service.get_public_ticket_by_number(
+        db,
+        ticket_number,
+        viewer_id=current_user.id if current_user else None,
+    )
     if ticket is None:
         raise HTTPException(status_code=404, detail="Ticket not found")
 

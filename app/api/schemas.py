@@ -215,6 +215,8 @@ class PublicTicketOut(BaseModel):
     category: str
     status: TicketStatus
     description: str
+    public_upvote_count: int = 0
+    has_upvoted: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

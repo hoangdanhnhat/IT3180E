@@ -74,6 +74,12 @@ export const getPublicTickets = (q = '', category = '') => {
 export const getPublicTicket = (ticketNumber) =>
   client.get(`/tickets/public/${ticketNumber}`).then((r) => r.data)
 
+export const upvotePublicTicket = (ticketNumber) =>
+  client.post(`/tickets/public/${ticketNumber}/upvote`).then((r) => r.data)
+
+export const removePublicTicketUpvote = (ticketNumber) =>
+  client.delete(`/tickets/public/${ticketNumber}/upvote`).then((r) => r.data)
+
 export const downloadPublicAttachment = async (ticketNumber, attachmentId, filename) => {
   const res = await client.get(
     `/tickets/public/${ticketNumber}/attachments/${attachmentId}/download`,

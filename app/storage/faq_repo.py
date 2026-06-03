@@ -1,5 +1,7 @@
 """Low-level database access for FAQ items."""
 
+import re
+import unicodedata
 import uuid
 
 from sqlalchemy import text
@@ -9,50 +11,132 @@ from app.storage.models import FaqItem, FaqUpvote
 
 
 # ---------------------------------------------------------------------------
-# Hybrid search: BM25 (tsvector ts_rank) + Fuzzy (pg_trgm similarity)
+# Hybrid search: PostgreSQL full-text rank + fuzzy pg_trgm similarity
 # ---------------------------------------------------------------------------
 
+_SEARCH_TOKEN_RE = re.compile(r"[^\W_]+(?:'[^\W_]+)?", re.IGNORECASE)
+
+
+def _strip_accents(value: str) -> str:
+    """Normalize Vietnamese accents for accent-insensitive search prefixes."""
+    normalized = unicodedata.normalize(
+        "NFKD",
+        value.replace("đ", "d").replace("Đ", "D"),
+    )
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _make_prefix_tsquery(q: str) -> str | None:
+    """Build a safe prefix tsquery string for partial-word FAQ searches."""
+    tokens = _SEARCH_TOKEN_RE.findall(_strip_accents(q).lower())
+    if not tokens:
+        return None
+    return " & ".join(f"{token}:*" for token in tokens)
+
+
 _HYBRID_SQL = text("""
-WITH bm25 AS (
+WITH search_input AS (
     SELECT
-        id,
-        ts_rank(search_vector, plainto_tsquery('english', :q)) AS bm25_score
-    FROM faq_items
-    WHERE
-        is_active = TRUE
-        AND (:category IS NULL OR category = :category)
-        AND search_vector @@ plainto_tsquery('english', :q)
+        websearch_to_tsquery('english', :q) AS web_query,
+        websearch_to_tsquery('simple', unaccent(:q)) AS unaccent_query,
+        lower(unaccent(:q)) AS unaccent_q,
+        CASE
+            WHEN :prefix_q IS NULL THEN NULL::tsquery
+            ELSE to_tsquery('simple', :prefix_q)
+        END AS prefix_query
 ),
-fuzzy AS (
+scored AS (
     SELECT
-        id,
+        faq_items.id,
+        ts_rank_cd(faq_items.search_vector, search_input.web_query, 32) AS web_rank,
+        ts_rank_cd(faq_items.search_vector, search_input.unaccent_query, 32) AS unaccent_rank,
+        CASE
+            WHEN search_input.prefix_query IS NULL THEN 0.0
+            ELSE ts_rank_cd(faq_items.search_vector, search_input.prefix_query, 32)
+        END AS prefix_rank,
         GREATEST(
-            similarity(question, :q),
-            similarity(answer,   :q)
-        ) AS fuzzy_score
+            similarity(faq_items.question, :q),
+            similarity(faq_items.answer, :q),
+            similarity(faq_items.category, :q),
+            similarity(coalesce(array_to_string(faq_items.tags, ' '), ''), :q),
+            similarity(lower(unaccent(faq_items.question)), search_input.unaccent_q),
+            similarity(lower(unaccent(faq_items.answer)), search_input.unaccent_q),
+            similarity(lower(unaccent(faq_items.category)), search_input.unaccent_q),
+            similarity(
+                lower(unaccent(coalesce(array_to_string(faq_items.tags, ' '), ''))),
+                search_input.unaccent_q
+            )
+        ) AS fuzzy_score,
+        CASE
+            WHEN length(search_input.unaccent_q) < 4 THEN 0.0
+            ELSE GREATEST(
+                word_similarity(search_input.unaccent_q, lower(unaccent(faq_items.question))),
+                word_similarity(search_input.unaccent_q, lower(unaccent(faq_items.answer))),
+                word_similarity(search_input.unaccent_q, lower(unaccent(faq_items.category))),
+                word_similarity(
+                    search_input.unaccent_q,
+                    lower(unaccent(coalesce(array_to_string(faq_items.tags, ' '), '')))
+                )
+            )
+        END AS phrase_typo_score,
+        (
+            SELECT COALESCE(avg(token_scores.best_score), 0.0)
+            FROM (
+                SELECT GREATEST(
+                    word_similarity(token.value, lower(unaccent(faq_items.question))),
+                    word_similarity(token.value, lower(unaccent(faq_items.answer))),
+                    word_similarity(token.value, lower(unaccent(faq_items.category))),
+                    word_similarity(
+                        token.value,
+                        lower(unaccent(coalesce(array_to_string(faq_items.tags, ' '), '')))
+                    )
+                ) AS best_score
+                FROM regexp_split_to_table(search_input.unaccent_q, '[[:space:]]+') AS token(value)
+                WHERE length(token.value) >= 4
+            ) AS token_scores
+        ) AS token_typo_score,
+        CASE
+            WHEN faq_items.question ILIKE :pattern THEN 1.0
+            WHEN lower(unaccent(faq_items.question)) ILIKE :unaccent_pattern THEN 1.0
+            WHEN faq_items.category ILIKE :pattern THEN 0.7
+            WHEN lower(unaccent(faq_items.category)) ILIKE :unaccent_pattern THEN 0.7
+            WHEN coalesce(array_to_string(faq_items.tags, ' '), '') ILIKE :pattern THEN 0.6
+            WHEN lower(unaccent(coalesce(array_to_string(faq_items.tags, ' '), ''))) ILIKE :unaccent_pattern THEN 0.6
+            WHEN faq_items.answer ILIKE :pattern THEN 0.35
+            WHEN lower(unaccent(faq_items.answer)) ILIKE :unaccent_pattern THEN 0.35
+            ELSE 0.0
+        END AS exact_boost,
+        (ln(faq_items.upvote_count + 1) * 0.04 + ln(faq_items.view_count + 1) * 0.01) AS usage_boost
     FROM faq_items
+    CROSS JOIN search_input
     WHERE
-        is_active = TRUE
-        AND (:category IS NULL OR category = :category)
-        AND (
-            question % :q
-            OR answer  % :q
-            OR question ILIKE :pattern
-            OR answer   ILIKE :pattern
-        )
-),
-combined AS (
-    SELECT
-        COALESCE(b.id, f.id)              AS id,
-        COALESCE(b.bm25_score,  0.0)      AS bm25_score,
-        COALESCE(f.fuzzy_score, 0.0)      AS fuzzy_score
-    FROM bm25 b
-    FULL OUTER JOIN fuzzy f ON b.id = f.id
+        faq_items.is_active = TRUE
+        AND (:category IS NULL OR faq_items.category = :category)
 )
-SELECT faq_items.id, (bm25_score + fuzzy_score) AS score
-FROM   combined
-JOIN   faq_items ON faq_items.id = combined.id
-ORDER  BY faq_items.upvote_count DESC, score DESC, faq_items.created_at DESC
+SELECT
+    faq_items.id,
+    (
+        scored.web_rank * 4.0
+        + scored.unaccent_rank * 4.0
+        + scored.prefix_rank * 2.5
+        + scored.fuzzy_score * 1.2
+        + scored.phrase_typo_score * 1.5
+        + scored.token_typo_score
+        + scored.exact_boost
+        + scored.usage_boost
+    ) AS score
+FROM scored
+JOIN faq_items ON faq_items.id = scored.id
+WHERE scored.phrase_typo_score >= :phrase_typo_threshold
+   OR scored.token_typo_score >= :token_typo_threshold
+   OR (
+        scored.web_rank > 0
+        OR scored.unaccent_rank > 0
+        OR scored.prefix_rank > 0
+        OR scored.fuzzy_score >= :fuzzy_threshold
+        OR scored.exact_boost > 0
+   )
+ORDER BY score DESC, faq_items.upvote_count DESC, faq_items.created_at DESC
 LIMIT  :limit
 """)
 
@@ -66,16 +150,29 @@ def hybrid_search_faqs(
 ) -> list[FaqItem]:
     """
     Hybrid search combining:
-    - BM25 via PostgreSQL tsvector/ts_rank (exact term matching with TF-IDF weighting)
+    - PostgreSQL full-text ranking for exact and partial-word matches
     - Fuzzy matching via pg_trgm similarity (typo-tolerant)
+    - Small usage boost from upvotes/views after relevance is established
 
-    Results are ranked by the sum of both scores, highest first.
+    Results are ranked by relevance first, with popularity used as a boost/tiebreaker.
     Returns hydrated FaqItem ORM objects.
     """
+    q = " ".join(q.split())
     pattern = f"%{q}%"
+    unaccent_pattern = f"%{_strip_accents(q).lower()}%"
     rows = db.execute(
         _HYBRID_SQL,
-        {"q": q, "category": category, "pattern": pattern, "limit": limit},
+        {
+            "q": q,
+            "prefix_q": _make_prefix_tsquery(q),
+            "category": category,
+            "pattern": pattern,
+            "unaccent_pattern": unaccent_pattern,
+            "fuzzy_threshold": 0.25,
+            "phrase_typo_threshold": 0.45,
+            "token_typo_threshold": 0.55,
+            "limit": limit,
+        },
     ).fetchall()
 
     if not rows:

@@ -6,6 +6,8 @@
 
 -- Enable pgcrypto for gen_random_uuid() if needed
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 -- =============================================================================
 -- ENUM TYPES
@@ -119,6 +121,9 @@ CREATE TABLE faq_items (
 );
 
 CREATE INDEX ix_faq_items_search_vector ON faq_items USING GIN (search_vector);
+CREATE INDEX ix_faq_question_trgm ON faq_items USING GIN (question gin_trgm_ops);
+CREATE INDEX ix_faq_answer_trgm ON faq_items USING GIN (answer gin_trgm_ops);
+CREATE INDEX ix_faq_category_trgm ON faq_items USING GIN (category gin_trgm_ops);
 
 -- =============================================================================
 -- TABLE: faq_upvotes
@@ -228,12 +233,18 @@ RETURNS TRIGGER AS $$
 BEGIN
     NEW.search_vector :=
         setweight(to_tsvector('english', coalesce(NEW.question, '')), 'A') ||
-        setweight(to_tsvector('english', coalesce(NEW.answer,    '')), 'B');
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.question, ''))), 'A') ||
+        setweight(to_tsvector('english', coalesce(array_to_string(NEW.tags, ' '), '')), 'A') ||
+        setweight(to_tsvector('simple', unaccent(coalesce(array_to_string(NEW.tags, ' '), ''))), 'A') ||
+        setweight(to_tsvector('english', coalesce(NEW.category, '')), 'B') ||
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.category, ''))), 'B') ||
+        setweight(to_tsvector('english', coalesce(NEW.answer, '')), 'C') ||
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.answer, ''))), 'C');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER faq_items_tsvector_trigger
-    BEFORE INSERT OR UPDATE OF question, answer
+    BEFORE INSERT OR UPDATE OF question, answer, category, tags
     ON faq_items
     FOR EACH ROW EXECUTE FUNCTION faq_items_tsvector_update();

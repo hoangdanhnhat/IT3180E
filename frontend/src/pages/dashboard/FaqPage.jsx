@@ -561,7 +561,6 @@ export default function FaqPage() {
     setFaqs((prev) => (
       prev
         .map((f) => (f.id === updated.id ? updated : f))
-        .sort((a, b) => (b.upvote_count ?? 0) - (a.upvote_count ?? 0))
     ))
   }, [])
   const handleCreated = useCallback((faq) => {
